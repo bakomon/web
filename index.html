@@ -46,16 +46,41 @@
 </head>
 <body class="loading lody">
 <div class="atoz">Loading</div>
-<noscript><div class="no-js center">Maaf, situs ini tidak bisa bekerja tanpa javascript, mohon <a href="https://enable-javascript.com/id" rel="nofollow" target="_blank" title="Enable Javascript">aktifkan javascript</a> di browser Anda. Terima kasih&#160;&#160;^_^</div></noscript>
+<noscript><div class="no-js center">Maaf, situs ini tidak bisa bekerja tanpa javascript, mohon <a href="https://www.enablejavascript.io/id" rel="nofollow" target="_blank" title="Enable Javascript">aktifkan javascript</a> di browser Anda. Terima kasih&#160;&#160;^_^</div></noscript>
 <div id="check-point"></div>
 <script src="https://cdn.jsdelivr.net/npm/ua-parser-js@1.0.33/src/ua-parser.min.js" type="text/javascript"></script>
 <script src="./tools/es6-browser-supports.js" type="text/javascript"></script>
-<!-- <script type="text/javascript">self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;</script> -->
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js" type="text/javascript"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app-check.js" type="text/javascript"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js" type="text/javascript"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js" type="text/javascript"></script>
-<!-- <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js" type="text/javascript"></script> -->
-<script src="./script.js" type="text/javascript"></script>
+<!-- <script type="text/javascript">self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;</script> --><!-- https://firebase.google.com/docs/app-check/web/debug-provider#web-namespaced-api -->
+<script defer src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js" type="text/javascript"></script>
+<script defer src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app-check.js" type="text/javascript"></script>
+<script defer src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js" type="text/javascript"></script>
+<script defer src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js" type="text/javascript"></script>
+<!-- <script defer src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js" type="text/javascript"></script> -->
+<script type="text/javascript">
+// api, imageoptim, logo, fbase
+var bakomon_config = {
+  api: localStorage.getItem('bmv_api') || null,
+  imageoptim: "YOUR_IMAGEOPTIM_USERNAME",
+  fbase: {
+    apiKey: "API_KEY",
+    authDomain: "PROJECT_ID.firebaseapp.com",
+    databaseURL: "https://PROJECT_ID.firebaseio.com",
+    projectId: "PROJECT_ID",
+    storageBucket: "PROJECT_ID.appspot.com",
+    messagingSenderId: "SENDER_ID",
+    appId: "APP_ID",
+    measurementId: "G-MEASUREMENT_ID",
+  },
+  contact: {
+    formId: "GOOGLE_FORM_ID",
+    name: "NAME_ID",
+    email: "EMAIL_ID",
+    subject: "SUBJECT_ID",
+    message: "MESSAGE_ID",
+    response: "RESPONSE_ID"
+  }
+};
+</script>
+<script defer src="./script.js" type="text/javascript"></script>
 </body>
 </html>

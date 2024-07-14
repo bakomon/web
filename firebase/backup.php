@@ -6,7 +6,7 @@ require_once '../api/Allowed.php';
 use \Api\Allowed;
 
 // Prevent direct url access
-if (!(new Allowed)->check()) {
+if (!(new Allowed)->check(['only_referer' => true])) {
   header('HTTP/1.0 403 Forbidden', TRUE, 403);
   exit;
 }
@@ -17,29 +17,21 @@ function param_check($name, $arr)
 }
 
 if (param_check('uid', $_GET)) {
+  $timezone = param_check('tz', $_GET) ? $_GET['tz'] : 'UTC';
+  date_default_timezone_set($timezone);
+
   $firebase_url = 'https://PROJECT_ID.firebaseio.com';
-  $database_secret = 'YOUR_FIREBASE_DATABASE_SECRET'; // https://console.firebase.google.com/project/_/settings/serviceaccounts/databasesecrets
+  $database_secret = 'YOUR_FIREBASE_DATABASE_SECRET'; //https://console.firebase.google.com/project/_/settings/serviceaccounts/databasesecrets
 
   $file_path = getcwd() . '/../.backup/';
   $file_location = $file_path . '/'. $_GET['uid'] . '.json';
 
   if (!file_exists($file_location) || (filemtime($file_location) < time() - 86400) || array_key_exists('manual', $_GET) || array_key_exists('export', $_GET)) { // 1 day
-    $curl = curl_init();
-    curl_setopt_array($curl, array(
-      CURLOPT_URL => $firebase_url . '/users/' . $_GET['uid'] . '.json?format=export&auth=' . $database_secret, //REST
-      CURLOPT_RETURNTRANSFER => true,
-      CURLOPT_ENCODING => '',
-      CURLOPT_MAXREDIRS => 10,
-      CURLOPT_TIMEOUT => 30,
-      CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-      CURLOPT_CUSTOMREQUEST => 'GET'
-    ));
-    $response = curl_exec($curl);
-    $err = curl_error($curl);
-    curl_close($curl);
-
-    if ($err) {
-      echo '!! Error: Firebase backup.php: ' . $err;
+    $url = $firebase_url . '/users/' . $_GET['uid'] . '.json?format=export&auth=' . $database_secret;
+    if (($response = @file_get_contents($url)) === false) {
+      $error = error_get_last();
+      $error = explode(': ', $error['message']);
+      echo '!! Error: Firebase backup.php: ' . trim($error[2]);
     } else {
       if (!is_dir($file_path)) mkdir($file_path, 0777, true);
       file_put_contents($file_location, $response);
@@ -49,7 +41,7 @@ if (param_check('uid', $_GET)) {
 
       if (array_key_exists('export', $_GET)) {
         header('Content-type: application/json');
-        header('Content-disposition: attachment; filename=bakomon-export-' . $_GET['uid'] . '.json');
+        header('Content-disposition: attachment; filename=bakomon-export-' . $_GET['uid'] . '-' . filemtime($file_location) . '.json');
 
         // Prevent caching
         header("Expires: Mon, 28 Sep 2020 06:21:26 GMT+8"); // Date in the past
@@ -62,7 +54,6 @@ if (param_check('uid', $_GET)) {
       }
     }
   } else {
-    date_default_timezone_set('Asia/Jakarta');
     echo 'Last firebase backup: ' . date('l, d F Y H:i:s O (e)', filemtime($file_location)) . ', size: ' . number_format(filesize($file_location) / 1024, 2) . ' KB';
   }
 }
