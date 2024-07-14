@@ -1,15 +1,15 @@
 <?php
 
-namespace Api;
+namespace Api\Controllers;
 
-require_once __DIR__ . '/Services/Http.php';
-require_once __DIR__ . '/Services/xSelector.php';
+require __DIR__ . '/../Services/Http.php';
+require __DIR__ . '/../Services/xSelector.php';
 
 use \DOMXpath;
 use Api\Services\Http;
 use Api\Services\xSelector;
 
-class CController
+class Controller
 {
     private function param_check($name)
     {
@@ -27,7 +27,7 @@ class CController
             $data = [];
 
             $source_link = str_replace('{$page}', $page, $source['url']['latest']);
-            $source_xml = Http::get($source_link);
+            $source_xml = Http::load($source_link);
 
             if (!$source_xml->isSuccess()) {
                 if ($source_xml->isBlocked()) {
@@ -39,8 +39,12 @@ class CController
             }
 
             $xpath = new DOMXpath($source_xml->responseParse());
-            $lists = $xpath->query($source['LS']['parent']); //parent
+            if ($source_xml->isDomainChanged($xpath)) :
+                $source_xml::$status = 0;
+                return (object) $source_xml->showError("Domain Changed ($source_site)");
+            endif;
 
+            $lists = $xpath->query($source['LS']['parent']); //parent
             if ($lists->length > 0) :
                 $ls_lists = [];
 
@@ -80,7 +84,13 @@ class CController
                     endif;
 
                     $cover = $xpath->query($source['LS']['cover']['xpath'], $index);
-                    $cover = $cover->length > 0 ? $cover[0]->getAttribute($source['LS']['cover']['attr']) : '';
+                    if ($cover->length > 0) :
+                        $attr_alt = array_key_exists('attr_alt', $source['LS']['cover']) && $cover[0]->hasAttribute($source['LS']['cover']['attr_alt']);
+                        $cover_attr = $attr_alt ? 'attr_alt' : 'attr';
+                        $cover = $cover[0]->getAttribute($source['LS']['cover'][$cover_attr]);
+                    else :
+                        $cover = '';
+                    endif;
 
                     // skip 18+
                     if ($source_site == 'maid' && preg_match('/\sdoujin/i', $type_el)) continue;
@@ -103,30 +113,41 @@ class CController
                     ]);
                 }
 
-                $n_pattern = $source['LS']['nav']['regex'];
-                $next_btn = $xpath->query($source['LS']['nav']['next']['xpath']);
-                $prev_btn = $xpath->query($source['LS']['nav']['prev']['xpath']);
+                if ($source['theme'] == 'madara' && array_key_exists('ajax', $source['LS']['nav'])) :
+                    $next_page = (int)$page + 1;
+                    $next_link = str_replace('{$page}', $next_page, $source['url']['latest']);
+                    $next_xml = Http::load($next_link);
+                    $next = $next_xml::$status == '404' ? '' : (string)$next_page;
 
-                // next button
-                if ($next_btn->length > 0) :
-                    preg_match($n_pattern, $next_btn[0]->getAttribute($source['LS']['nav']['next']['attr']), $next);
-                    $next = $next[1];
+                    $prev = $page == '1' ? '' : (int)$page - 1;
+                    $prev = (string)$prev;
                 else :
-                    $next = '';
-                endif;
+                    $n_pattern = $source['LS']['nav']['regex'];
+                    $next_btn = $xpath->query($source['LS']['nav']['next']['xpath']);
+                    $prev_btn = $xpath->query($source['LS']['nav']['prev']['xpath']);
 
-                // prev button
-                if ($prev_btn->length > 0) :
-                    $prev_index = $source['theme'] == 'madara' && $prev_btn->length > 1 ? ($prev_btn->length - 1) : 0;
-                    preg_match($n_pattern, $prev_btn[$prev_index]->getAttribute($source['LS']['nav']['prev']['attr']), $prev);
-                    $prev = empty($prev) ? '1' : $prev[1];
-                else :
-                    $prev = '';
+                    // next button
+                    if ($next_btn->length > 0) :
+                        preg_match($n_pattern, $next_btn[0]->getAttribute($source['LS']['nav']['next']['attr']), $next);
+                        $next = $next[1];
+                    else :
+                        $next = '';
+                    endif;
+
+                    // prev button
+                    if ($prev_btn->length > 0) :
+                        $prev_index = $source['theme'] == 'madara' && $prev_btn->length > 1 ? ($prev_btn->length - 1) : 0;
+                        preg_match($n_pattern, $prev_btn[$prev_index]->getAttribute($source['LS']['nav']['prev']['attr']), $prev);
+                        $prev = empty($prev) ? '1' : $prev[1];
+                    else :
+                        $prev = '';
+                    endif;
                 endif;
 
                 $data = [
                     'status' => 'SUCCESS',
                     'status_code' => $source_xml::$status,
+                    'cache' => $source_xml::$cache,
                     'bypass' => $source_xml::$bypass,
                     'next' => $next,
                     'prev' => $prev,
@@ -137,6 +158,7 @@ class CController
                 $data = [
                     'status' => 'NOT_FOUND',
                     'status_code' => 404,
+                    'cache' => $source_xml::$cache,
                     'bypass' => $source_xml::$bypass,
                     'message' => '{$lists} Not Found',
                     'source' => $source_link,
@@ -166,8 +188,9 @@ class CController
             if ($value || $value === '0') :
                 $is_advanced = $this->param_check('params') ? true : false;
                 $qs = $is_advanced && $source['theme'] == 'eastheme' ? '?' : '';
+                $val = $is_advanced ? $value : rawurlencode($value);
                 $search = ['{$page}', '{$value}'];
-                $replace = $value == 'default' ? [$page, ''] : [$page, $qs . rawurlencode($value)];
+                $replace = $value == 'default' ? [$page, ''] : [$page, $qs . $val];
                 $full_url = $is_advanced ? 'advanced' : 'search';
                 $source_link = str_replace($search, $replace, $source['url'][$full_url]);
 
@@ -179,11 +202,11 @@ class CController
                 if (strpos($value, 'order=') === FALSE && ($source['theme'] == 'koidezign' || $is_advanced && $value == 'default')) :
                     $s_qs = strpos($source_link, '?') !== FALSE ? '&' :'?';
                     $s_value = $source['theme'] == 'enduser' ? 'update' : 'latest'; //order/sort by "added (latest)"
-                    $s_url = $source['theme'] == 'madara' ? 'my_orderby=new-manga' : ('order=' . $s_value);
+                    $s_url = $source['theme'] == 'madara' ? 'm_orderby=new-manga' : ('order=' . $s_value);
                     $source_link .= $s_qs . $s_url;
                 endif;
 
-                $source_xml = Http::get($source_link);
+                $source_xml = Http::load($source_link);
 
                 if (!$source_xml->isSuccess()) {
                     if ($source_xml->isBlocked()) {
@@ -195,6 +218,10 @@ class CController
                 }
 
                 $xpath = new DOMXpath($source_xml->responseParse());
+                if ($source_xml->isDomainChanged($xpath)) :
+                    $source_xml::$status = 0;
+                    return (object) $source_xml->showError("Domain Changed ($source_site)");
+                endif;
 
                 $sc_path = array_key_exists('search', $source) ? 'search' : 'LS';
 
@@ -239,7 +266,13 @@ class CController
                         endif;
 
                         $cover = $xpath->query($source['LS']['cover']['xpath'], $index);
-                        $cover = $cover->length > 0 ? $cover[0]->getAttribute($source['LS']['cover']['attr']) : '';
+                        if ($cover->length > 0) :
+                            $attr_alt = array_key_exists('attr_alt', $source['LS']['cover']) && $cover[0]->hasAttribute($source['LS']['cover']['attr_alt']);
+                            $cover_attr = $attr_alt ? 'attr_alt' : 'attr';
+                            $cover = $cover[0]->getAttribute($source['LS']['cover'][$cover_attr]);
+                        else :
+                            $cover = '';
+                        endif;
 
                         // skip 18+
                         if ($source_site == 'maid' && preg_match('/\sdoujin/i', $type_el)) continue;
@@ -257,26 +290,36 @@ class CController
                         ]);
                     }
 
-                    $n_path = array_key_exists('nav', $source[$sc_path]) && !$is_advanced ? $sc_path : 'LS';
-                    $n_pattern = $source[$n_path]['nav']['regex'];
-                    $next_btn = $xpath->query($source[$n_path]['nav']['next']['xpath']);
-                    $prev_btn = $xpath->query($source[$n_path]['nav']['prev']['xpath']);
+                    $np_path = array_key_exists('nav', $source[$sc_path]) && !$is_advanced ? $sc_path : 'LS';
+                    if ($source['theme'] == 'madara' && array_key_exists('ajax', $source[$np_path]['nav'])) :
+                        $next_page = (int)$page + 1;
+                        $next_link = str_replace('{$page}', $next_page, $source['url']['latest']);
+                        $next_xml = Http::load($next_link);
+                        $next = $next_xml::$status == '404' ? '' : (string)$next_page;
 
-                    // next button
-                    if ($next_btn->length > 0) :
-                        preg_match($n_pattern, $next_btn[0]->getAttribute($source[$n_path]['nav']['next']['attr']), $next);
-                        $next = $next[1];
+                        $prev = $page == '1' ? '' : (int)$page - 1;
+                        $prev = (string)$prev;
                     else :
-                        $next = '';
-                    endif;
+                        $n_pattern = $source[$np_path]['nav']['regex'];
+                        $next_btn = $xpath->query($source[$np_path]['nav']['next']['xpath']);
+                        $prev_btn = $xpath->query($source[$np_path]['nav']['prev']['xpath']);
 
-                    // prev button
-                    if ($prev_btn->length > 0) :
-                        $prev_index = $source['theme'] == 'madara' && $prev_btn->length > 1 ? ($prev_btn->length - 1) : 0;
-                        preg_match($n_pattern, $prev_btn[$prev_index]->getAttribute($source[$n_path]['nav']['prev']['attr']), $prev);
-                        $prev = empty($prev) ? '1' : $prev[1];
-                    else :
-                        $prev = '';
+                        // next button
+                        if ($next_btn->length > 0) :
+                            preg_match($n_pattern, $next_btn[0]->getAttribute($source[$np_path]['nav']['next']['attr']), $next);
+                            $next = $next[1];
+                        else :
+                            $next = '';
+                        endif;
+
+                        // prev button
+                        if ($prev_btn->length > 0) :
+                            $prev_index = $source['theme'] == 'madara' && $prev_btn->length > 1 ? ($prev_btn->length - 1) : 0;
+                            preg_match($n_pattern, $prev_btn[$prev_index]->getAttribute($source[$np_path]['nav']['prev']['attr']), $prev);
+                            $prev = empty($prev) ? '1' : $prev[1];
+                        else :
+                            $prev = '';
+                        endif;
                     endif;
                 else :
                     // echo '{$lists} Not Found. $data = ';
@@ -287,6 +330,7 @@ class CController
                 $data = [
                     'status' => 'SUCCESS',
                     'status_code' => $source_xml::$status,
+                    'cache' => $source_xml::$cache,
                     'bypass' => $source_xml::$bypass,
                     'next' => $next,
                     'prev' => $prev,
@@ -320,7 +364,7 @@ class CController
 
             if ($slug) :
                 $source_link = str_replace('{$slug}', $slug, $source['url']['series']);
-                $source_xml = Http::get($source_link);
+                $source_xml = Http::load($source_link);
 
                 if (!$source_xml->isSuccess()) {
                     if ($source_xml->isBlocked()) {
@@ -332,10 +376,15 @@ class CController
                 }
 
                 $status_code = $source_xml::$status;
+                $cached = $source_xml::$cache;
                 $bypass = $source_xml::$bypass;
 
                 $dom = $source_xml->responseParse();
                 $xpath = new DOMXpath($dom);
+                if ($source_xml->isDomainChanged($xpath)) :
+                    $source_xml::$status = 0;
+                    return (object) $source_xml->showError("Domain Changed ($source_site)");
+                endif;
 
                 $slink = $xpath->query($source['series']['shortlink']['xpath']);
                 if ($slink->length > 0) :
@@ -366,7 +415,7 @@ class CController
 
                     $title = $xpath->query($source['series']['title']['xpath'], $article)[0]->textContent;
                     $title = preg_replace($source['series']['title']['regex'], '', $title);
-                    $title = preg_replace($source['series']['title']['regex2'], '', $title);
+                    if (isset($source['series']['title']['regex2'])) $title = preg_replace($source['series']['title']['regex2'], '', $title);
 
                     if (array_key_exists('alternative', $source['series'])) :
                         $alternative = $xpath->query($source['series']['alternative']['xpath'], $article);
@@ -379,14 +428,24 @@ class CController
                     endif;
 
                     $cover = $xpath->query($source['series']['cover']['xpath'], $article);
-                    $cover = $cover->length > 0 ? $cover[0]->getAttribute($source['series']['cover']['attr']) : '';
+                    if ($cover->length > 0) :
+                        $attr_alt = array_key_exists('attr_alt', $source['series']['cover']) && $cover[0]->hasAttribute($source['series']['cover']['attr_alt']);
+                        $cover_attr = $attr_alt ? 'attr_alt' : 'attr';
+                        $cover = $cover[0]->getAttribute($source['series']['cover'][$cover_attr]);
+                    else :
+                        $cover = '';
+                    endif;
 
                     $type = $xpath->query($detail['type']['xpath'], $article);
                     $type = $type->length > 0 ? $type[0]->textContent : '';
                     if (array_key_exists('regex', $detail['type'])) $type = preg_replace($detail['type']['regex'], '', $type);
 
-                    $status = $xpath->query($detail['status']['xpath'], $article)[0]->textContent;
-                    if (array_key_exists('regex', $detail['status'])) $status = preg_replace($detail['status']['regex'], '', $status);
+                    if (isset($detail['status'])) {
+                        $status = $xpath->query($detail['status']['xpath'], $article)[0]->textContent;
+                        if (array_key_exists('regex', $detail['status'])) $status = preg_replace($detail['status']['regex'], '', $status);
+                    } else {
+                        $status = '';
+                    }
 
                     if (array_key_exists('author', $detail)) {
                         $author = $xpath->query($detail['author']['xpath'], $article);
@@ -417,7 +476,7 @@ class CController
                     $ajax_check = array_key_exists('ajax', $source['series']['chapter']) && $xpath->query($source['series']['chapter']['parent'], $article)->length > 0;
                     if ($source['theme'] == 'madara' && $ajax_check) :
                         $chapters_link = $source_link . $source['series']['chapter']['ajax'];
-                        $chapters_xml = Http::post($chapters_link);
+                        $chapters_xml = Http::load($chapters_link, ['method' => 'POST']);
 
                         if (!$chapters_xml->isSuccess() && $chapters_xml->isBlocked()) $chapters_xml = Http::bypass($chapters_link, true);
 
@@ -441,7 +500,7 @@ class CController
 
                             $ch_el = array_key_exists('num', $source['series']['chapter']) ? $xpath->query($source['series']['chapter']['num'], $index)[0] : $index;
                             $ch_num = preg_replace('/ch([ap][ap](t?er)?)?\.?[\s\t]+/i', '', $ch_el->textContent);
-                            $ch_num = preg_replace($source['series']['title']['regex2'], '', $ch_num);
+                            if (isset($source['series']['title']['regex2'])) $ch_num = preg_replace($source['series']['title']['regex2'], '', $ch_num);
 
                             $sr_slug = $slink ? preg_replace('/^' . $slink . '(\d+)?\-/i', '', $slug) : $slug; //remove shortlink
                             $sr_slug = preg_replace('/s\-/i', 's?-', $sr_slug); //eg. https://regexr.com/7es39
@@ -451,7 +510,7 @@ class CController
 
                             $ch_data = [
                                 'number' => $ch_num != '' ? trim($ch_num) : (count($chapter) > 0 ? $chapter[1] : ''),
-                                'url' => parse_url($ch_url, PHP_URL_PATH),
+                                'url' => parse_url($ch_url, PHP_URL_PATH) . ($source['theme'] == 'madara' ? '?style=list' : ''),
                             ];
                             array_push($ch_lists, $ch_data);
                         }
@@ -460,6 +519,7 @@ class CController
                     $data = [
                         'status' => 'SUCCESS',
                         'status_code' => $status_code,
+                        'cache' => $cached,
                         'bypass' => $bypass,
                         'title' => trim($title),
                         'alternative' => $alternative,
@@ -474,6 +534,7 @@ class CController
                     $data = [
                         'status' => 'NOT_FOUND',
                         'status_code' => 404,
+                        'cache' => $cached,
                         'bypass' => $bypass,
                         'message' => '{$article} Not Found',
                         'source' => $source_link,
@@ -510,7 +571,7 @@ class CController
                 $search = ['{$slug}', '{$chapter}'];
                 $replace = [$slug, $chapter];
                 $source_link = $url ? $source['url']['host'] . $url : str_replace($search, $replace, $source['url']['chapter']);
-                $source_xml = Http::get($source_link);
+                $source_xml = Http::load($source_link);
 
                 if (!$source_xml->isSuccess()) {
                     if ($source_xml->isBlocked()) {
@@ -522,48 +583,58 @@ class CController
                 }
 
                 $xpath = new DOMXpath($source_xml->responseParse());
-                $content = $xpath->query($source['chapter']['parent']); //parent
+                if ($source_xml->isDomainChanged($xpath)) :
+                    $source_xml::$status = 0;
+                    return (object) $source_xml->showError("Domain Changed ($source_site)");
+                endif;
 
+                $content = $xpath->query($source['chapter']['parent']); //parent
                 if ($content->length > 0) :
                     $content = $content[0];
                     $img_lists = [];
 
                     $title_path = $source['chapter']['title']['xpath'];
-                    if ($source_site == 'mgkomik') $title_path = $title_path . "//a[contains(@href, '$slug')]";
-                    $title = $xpath->query($title_path)[0]->textContent;
-                    if (preg_match($source['chapter']['title']['regex'], $title, $m_title)) :
-                        $title = $m_title[1];
+                    if (array_key_exists('slug', $source['chapter']['title'])) :
+                        $title = $xpath->query($title_path . "//a[contains(@href, '$slug')]")[0]->textContent;
+                    else :
+                        $title = $xpath->query($title_path)[0]->textContent;
+                        if (preg_match($source['chapter']['title']['regex'], $title, $m_title)) :
+                            $title = $m_title[1];
+                        endif;
+                        $title = preg_replace($source['chapter']['title']['regex2'], '', $title);
                     endif;
-                    $title = preg_replace($source['chapter']['title']['regex2'], '', $title);
 
-                    if ($source['theme'] == 'themesia') :
+                    if ($source['theme'] == 'themesia' && !array_key_exists('xpath', $source['chapter']['images'])) :
                         $cover = '';
 
-                        $ch_script = $xpath->query($source['chapter']['nav']['xpath']);
+                        $ch_script = $xpath->query($source['chapter']['json']['xpath']);
                         if ($ch_script->length > 0) :
-                            preg_match('/(\{[^\;]+)\)\;/', $ch_script[0]->textContent, $ts_reader);
-                            $ch_data = json_decode($ts_reader[1], true);
+                            preg_match('/(\{[^\)]+)\);?/', $ch_script[0]->textContent, $ts_reader);
+                            $ch_data = str_replace('!0', 'true', $ts_reader[1]);
+                            $ch_data = str_replace('!1', 'false', $ch_data);
+                            $ch_data = json_decode($ch_data, true);
 
-                            $next_url = $ch_data[$source['chapter']['nav']['next']['name']];
+                            $nav_rgx1 = $source['chapter']['json']['regex'];
+                            $nav_rgx2 = $source['chapter']['json']['regex2'];
+
+                            $next_url = $ch_data[$source['chapter']['json']['next']['name']];
                             if ($next_url != '') :
-                                $next_str = preg_replace('/' . $slug . '/i', '', $next_url);
-                                $next_str = preg_replace($source['chapter']['nav']['next']['regex2'], '', $next_str);
-                                preg_match($source['chapter']['nav']['next']['regex'], $next_str, $next);
+                                preg_match('/' . $nav_rgx1 . $nav_rgx2 . '/i', $next_url, $next_str);
+                                $next = preg_replace('/^' . $nav_rgx1 . '[\-\/]/i', '', $next_str[0]);
                                 $next = [
-                                    'number' => $next[1],
+                                    'number' => $next,
                                     'url' => parse_url($next_url, PHP_URL_PATH),
                                 ];
                             else :
                                 $next = json_decode('{}');
                             endif;
 
-                            $prev_url = $ch_data[$source['chapter']['nav']['prev']['name']];
+                            $prev_url = $ch_data[$source['chapter']['json']['prev']['name']];
                             if ($prev_url != '') :
-                                $prev_str = preg_replace('/' . $slug . '/i', '', $prev_url);
-                                $prev_str = preg_replace($source['chapter']['nav']['prev']['regex2'], '', $prev_str);
-                                preg_match($source['chapter']['nav']['prev']['regex'], $prev_str, $prev);
+                                preg_match('/' . $nav_rgx1 . $nav_rgx2 . '/i', $prev_url, $prev_str);
+                                $prev = preg_replace('/^' . $nav_rgx1 . '[\-\/]/i', '', $prev_str[0]);
                                 $prev = [
-                                    'number' => $prev[1],
+                                    'number' => $prev,
                                     'url' => parse_url($prev_url, PHP_URL_PATH),
                                 ];
                             else :
@@ -584,34 +655,41 @@ class CController
                         if (array_key_exists('cover', $source['chapter'])) :
                             // cover selector without parent
                             $cover = $xpath->query($source['chapter']['cover']['xpath']);
-                            $cover = $cover->length > 0 ? $cover[0]->getAttribute($source['chapter']['cover']['attr']) : '';
+                            if ($cover->length > 0) :
+                                $attr_alt = array_key_exists('attr_alt', $source['chapter']['cover']) && $cover[0]->hasAttribute($source['chapter']['cover']['attr_alt']);
+                                $cover_attr = $attr_alt ? 'attr_alt' : 'attr';
+                                $cover = $cover[0]->getAttribute($source['chapter']['cover'][$cover_attr]);
+                            else :
+                                $cover = '';
+                            endif;
                         else :
                             $cover = '';
                         endif;
 
-                        $next_btn = $xpath->query($source['chapter']['next']['xpath'], $content);
+                        $nav_rgx1 = $source['chapter']['nav']['regex'];
+                        $nav_rgx2 = $source['chapter']['nav']['regex2'];
+
+                        $next_btn = $xpath->query($source['chapter']['nav']['next']['xpath'], $content);
                         if ($next_btn->length > 0) :
-                            $next_url = $next_btn[0]->getAttribute($source['chapter']['next']['attr']);
-                            $next_str = preg_replace('/' . $slug . '/i', '', $next_url);
-                            $next_str = preg_replace($source['chapter']['next']['regex2'], '', $next_str);
-                            preg_match($source['chapter']['next']['regex'], $next_str, $next);
+                            $next_url = $next_btn[0]->getAttribute($source['chapter']['nav']['next']['attr']);
+                            preg_match('/' . $nav_rgx1 . $nav_rgx2 . '/i', $next_url, $next_str);
+                            $next = preg_replace('/^' . $nav_rgx1 . '[\-\/]/i', '', $next_str[0]);
                             $next = [
-                                'number' => $next[1],
-                                'url' => parse_url($next_url, PHP_URL_PATH),
+                                'number' => $next,
+                                'url' => parse_url($next_url, PHP_URL_PATH) . ($source['theme'] == 'madara' ? '?style=list' : ''),
                             ];
                         else :
                             $next = json_decode('{}');
                         endif;
 
-                        $prev_btn = $xpath->query($source['chapter']['prev']['xpath'], $content);
+                        $prev_btn = $xpath->query($source['chapter']['nav']['prev']['xpath'], $content);
                         if ($prev_btn->length > 0) :
-                            $prev_url = $prev_btn[0]->getAttribute($source['chapter']['prev']['attr']);
-                            $prev_str = preg_replace('/' . $slug . '/i', '', $prev_url);
-                            $prev_str = preg_replace($source['chapter']['prev']['regex2'], '', $prev_str);
-                            preg_match($source['chapter']['prev']['regex'], $prev_str, $prev);
+                            $prev_url = $prev_btn[0]->getAttribute($source['chapter']['nav']['prev']['attr']);
+                            preg_match('/' . $nav_rgx1 . $nav_rgx2 . '/i', $prev_url, $prev_str);
+                            $prev = preg_replace('/^' . $nav_rgx1 . '[\-\/]/i', '', $prev_str[0]);
                             $prev = [
-                                'number' => $prev[1],
-                                'url' => parse_url($prev_url, PHP_URL_PATH),
+                                'number' => $prev,
+                                'url' => parse_url($prev_url, PHP_URL_PATH) . ($source['theme'] == 'madara' ? '?style=list' : ''),
                             ];
                         else :
                             $prev = json_decode('{}');
@@ -621,7 +699,9 @@ class CController
 
                         if ($images->length > 0) :
                             foreach ($images as $img) {
-                                array_push($img_lists, trim($img->getAttribute($source['chapter']['images']['attr'])));
+                                $attr_alt = array_key_exists('attr_alt', $source['chapter']['images']) && $img->hasAttribute($source['chapter']['images']['attr_alt']);
+                                $img_attr = $attr_alt ? 'attr_alt' : 'attr';
+                                array_push($img_lists, trim($img->getAttribute($source['chapter']['images'][$img_attr])));
                             }
                         endif;
                     endif;
@@ -629,6 +709,7 @@ class CController
                     $data = [
                         'status' => 'SUCCESS',
                         'status_code' => $source_xml::$status,
+                        'cache' => $source_xml::$cache,
                         'bypass' => $source_xml::$bypass,
                         'title' => trim($title),
                         'slug' => $slug,
@@ -643,6 +724,7 @@ class CController
                     $data = [
                         'status' => 'NOT_FOUND',
                         'status_code' => 404,
+                        'cache' => $source_xml::$cache,
                         'bypass' => $source_xml::$bypass,
                         'message' => '{$content} Not Found',
                         'source' => $source_link,

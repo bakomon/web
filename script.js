@@ -212,6 +212,7 @@ function addScript(options, callback) {
   var js_new = document.createElement('script');
   if ('id' in options) js_new.id = options.id;
   if ('async' in options) js_new.async = options.async;
+  if ('defer' in options) js_new.defer = options.defer;
   if ('html' in options && options.html == true) {
     js_new.type = 'text/javascript';
     js_new.innerHTML = options.data;
@@ -222,7 +223,7 @@ function addScript(options, callback) {
     }
     js_new.src = options.data;
   }
-  var parent = 'parent' in options && parent.tagName ? options.parent : document.querySelector('head');
+  var parent = 'parent' in options && options.parent.tagName ? options.parent : document.querySelector('head');
   parent.appendChild(js_new);
 }
 
@@ -353,6 +354,13 @@ function bmf_filterBy(note, array, param) {
   });
 }
 
+function bmf_get_id(title) {
+  var titleId = title.replace(/&#{0,1}[a-z0-9]+;/gi, '').replace(/\([^\)]+\)/g, '');
+  // titleId = titleId.replace(/\s((bahasa|sub(title)?)\s)?indo(nesiaa?)?/i, '').replace(/(baca|read|download)\s/i, '').replace(/\s?(man(ga|hwa|hua)|[kc]omi[kc]s?|series|novel|anime)\s?/i, '\x20');
+  titleId = titleId.replace(/(\.|\t)+/g, '\x20').replace(/\s+/g, '\x20').replace(/[^\s\w\-]/g, '').replace(/\s+$/g, '').replace(/\s+/g, '-').toLowerCase();
+  return titleId;
+}
+
 // Get URL Variables https://codepen.io/sekedus/pen/jOpNmja
 function bmf_getParam(param, url) {
   var result = [];
@@ -409,26 +417,30 @@ function bmf_connectionNotif(e) {
 }
 
 // loadXMLDoc (XMLHttpRequest) https://codepen.io/sekedus/pen/vYGYBNP
-function bmf_loadXMLDoc(note, url, callback, info) {
+function bmf_loadXMLDoc(info, url, callback) {
   var xhr = new XMLHttpRequest();
   xhr.onreadystatechange = function() {
     if (xhr.readyState == XMLHttpRequest.DONE) {
       var response = this.responseText;
       if (this.status == 200) {
-        if (info == 'parse') {
+        if ('parse' in info) {
           var resHTML = new DOMParser();
           response = resHTML.parseFromString(response, 'text/html');
         }
       } else {
-        var err_msg = '!! ERROR: bmf_loadXMLDoc status = '+ this.status +', url = '+ url;
+        var err_msg = '❗❗ ERROR: bmf_loadXMLDoc';
+        if ('timeout' in info) err_msg += ` timed out (${info.timeout}).`;
+        err_msg += ' status = '+ this.status +', url = '+ url;
         console.error(err_msg);
-        if (response == '') response = err_msg;
       }
-      callback(note, {"code": this.status, "response": response});
+      var data = {"code": this.status, "response": response};
+      if (typeof err_msg !== 'undefined') data.error = err_msg;
+      callback(info.note, data);
     }
   };
   xhr.open('GET', url, true);
   xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+  if ('timeout' in info) xhr.timeout = info.timeout;
   xhr.send();
 }
 
@@ -446,29 +458,53 @@ function bmf_lazyLoad(elem, note) {
     lz_check_point = el('#lz_check_point');
   }
 
-  function lazyNext() {
-    bmv_dt_lazy.splice(0, 1); //remove image after loaded
-    if (bmv_dt_lazy.length > 0 || note == 'single') lazyQueue();
-  }
-
   function lazyReset() {
     bmv_chk_lazy = false;
     bmv_lazy_error = false;
     bmv_lazy_skip = false;
   }
 
-  function lazyUrl(imgs, callback) {
-    if (is_mobile) {
+  function lazyNext() {
+    bmv_dt_lazy.splice(0, 1); //remove first image
+    if (bmv_dt_lazy.length > 0) lazyQueue();
+  }
+
+  function lazyUrl(elem, url, callback) {
+    if (bmv_load_cdn || url == '') {
+      callback(url);
+      return;
+    }
+    if (is_mobile && bmv_dt_settings.img_resize) {
       var lz_width = bmv_current == 'chapter' ? window.screen.width : (window.screen.width / 2);
-      bmf_loadXMLDoc(`xhr/${bmv_current}/lazyload`, `${api_url}/tools/image-resize/?quality=${bmv_dt_settings.quality}&width=${(lz_width + 40)}&imageUrl=${encodeURIComponent(imgs)}`, function(n, res) {
+      var lz_params = '?quality='+ bmv_dt_settings.resize_quality;
+      if (bmv_current == 'chapter') lz_params += '&index='+ elem.dataset.index;
+      lz_params += '&width='+ (lz_width + 50);
+      lz_params += '&ref='+ encodeURIComponent(bmv_lazy_referer);
+      lz_params += '&name='+ bmv_dt_settings.source.site +'_'+ bmf_get_id(elem.title);
+      lz_params += '&imageUrl='+ encodeURIComponent(url);
+
+      bmf_loadXMLDoc({note:`xhr/${bmv_current}/lazyload`, timeout:30000}, `${api_path}/tools/image-resize/${lz_params}`, function(n, res) {
         if (res.code == 200 && res.response != '') {
-          var img_data = JSON.parse(res.response);
-          if (img_data.status == 'success') imgs = img_data.image_url;
+          try {
+            var img_data = JSON.parse(res.response);
+            if (img_data.status == 'success') {
+              url = img_data.img_url;
+            } else {
+              throw new Error(img_data.error_message);
+            }
+          } catch(e) {
+            console.error(`!! Error: ${e}, ${url}`);
+          }
         }
-        callback(imgs);
+        if ('error' in res) console.error(res.error);
+        callback(url);
       });
     } else {
-      callback(imgs);
+      if (elem.dataset.ref == 'true') {
+        url = `${api_path}/tools/img_ref.php?ref=${encodeURIComponent(bmv_lazy_referer)}&url=`+ encodeURIComponent(url);
+        if (bmv_current == 'chapter' && elem.parentElement.tagName == 'A') elem.parentElement.href = url;
+      }
+      callback(url);
     }
   }
 
@@ -503,18 +539,18 @@ function bmf_lazyLoad(elem, note) {
     lz_img.onerror = function() { bmv_lazy_error = true; };
     bmv_chk_lazy = true;
 
-    if (isImageLoaded(lz_img) && lz_elem.classList.contains('lazyload3d')) {
+    if (!single && isImageLoaded(lz_elem) && lz_elem.classList.contains('lazyload3d')) {
       if (bmv_current == 'chapter') {
         clearInterval(lz_wait);
         lz_elem.style.removeProperty('min-height');
       }
       lazyReset();
-      if (!single) lazyNext();
+      lazyNext();
     } else {
-      lazyUrl(imgs, function(url) {
+      lazyUrl(lz_elem, imgs, function(url) {
         lz_img.src = url;
 
-        var skip_time = bmv_current == 'chapter' ? 60000 : 5000;
+        var skip_time = bmv_current == 'chapter' && lz_elem.dataset.ref == 'false' && !is_mobile ? 60000 : 5000;
         var skip_img = setTimeout(function() { bmv_lazy_skip = true; }, skip_time);
 
         var wait_img = setInterval(function() {
@@ -522,14 +558,21 @@ function bmf_lazyLoad(elem, note) {
             clearInterval(wait_img);
             clearTimeout(skip_img);
 
-            // repeat, if error & cdn is true
-            if (bmv_lazy_error && lz_img.src.match(bmv_rgx_cdn)) {
+            // repeat, if error
+            if (bmv_lazy_error && url != '' && (lz_img.src.match(bmv_rgx_cdn) || lz_elem.dataset.ref == 'false')) {
               lazyReset();
+              if (lz_img.src.match(bmv_rgx_cdn)) { //cdn is true
+                var err_url = lz_img.src.replace(bmv_rgx_cdn, '');
+                if (bmv_str_cdn == 'imagecdn') err_url = decodeURIComponent(err_url.replace(/^(https?:)?\/\//, ''));
+                var img_elem = single ? single : bmv_dt_lazy[0];
+                img_elem.img = err_url;
+              } else if (lz_elem.dataset.ref == 'false') {
+                lz_elem.dataset.ref = 'true';
+              }
+
               if (single) {
-                single.img = lz_img.src.replace(bmv_rgx_cdn, '');
                 lazyQueue(single);
               } else {
-                bmv_dt_lazy[0].img = lz_img.src.replace(bmv_rgx_cdn, '');
                 lazyQueue();
               }
             } else {
@@ -562,8 +605,8 @@ function bmf_lazyLoad(elem, note) {
     return lz_top && lz_bottom;
   }
 
-  function lazyLegacy(img, index = 0) {
-    var lz_chk1 = lazyPos(img) && !img.classList.contains('lazyload3d');
+  function lazyLegacy(elem, index = 0) {
+    var lz_chk1 = lazyPos(elem) && !elem.classList.contains('lazyload3d');
 
     var lz_next = false;
     if (bmv_current == 'chapter' && 'length' in lz_images) {
@@ -572,40 +615,44 @@ function bmf_lazyLoad(elem, note) {
       var lz_chk4 = lz_images[index+1] && !lazyPos(lz_images[index+1]) && lz_images[index+1].classList.contains('lazy1oad');
       if (lz_chk3 && lz_chk4) {
         lz_images[index].parentElement.classList.add('load-next');
-        img = lz_images[index+1];
+        elem = lz_images[index+1];
         lz_next = true;
       }
     }
 
     if (lz_chk1 || note == 'single' || note == 'multi' || lz_next) {
-      img.classList.remove('lazyload3d', 'lazyshow', 'no-image');
-      img.classList.add('loading', 'loge', 'lazy1oad');
-      var imgs = img.dataset.src;
+      elem.classList.remove('lazyload3d', 'lazyshow', 'no-image');
+      elem.classList.add('loading', 'loge', 'lazy1oad');
+      elem.setAttribute('data-ref', 'false');
+      var img = elem.dataset.src;
 
       if (bmv_current == 'chapter') {
-        imgs = bmv_load_cdn && bmv_str_cdn == 'imagecdn' ? encodeURIComponent(imgs) : imgs.replace(/^(https?:)?\/\//, '');
-        if (bmv_chk_cdn) imgs = imgs.replace(bmv_rgx_cdn, '').replace(/\/[fhwq]=[^\/]+/, '');
-        if (bmv_load_cdn) imgs = bmv_str_cdn_url + imgs;
-        imgs = wl.protocol +'//'+ imgs;
+        img = bmv_load_cdn && bmv_str_cdn == 'imagecdn' ? encodeURIComponent(img) : img.replace(/^(https?:)?\/\//, '');
+        if (bmv_chk_cdn) img = img.replace(bmv_rgx_cdn, '').replace(/\/[fhwq]=[^\/]+/, '');
+        if (bmv_load_cdn) img = bmv_str_cdn_url + img;
+        img = wl.protocol +'//'+ img;
 
         // remove location.search ?=
-        if (imgs.search(/(pending\-load|cdn\.statically\.io|cdn\.imagesimple\.co)/) != -1) imgs = imgs.replace(/\?(.*)/g, '');
+        if (img.search(/(pending\-load|cdn\.statically\.io|cdn\.imagesimple\.co)/) != -1) img = img.replace(/\?(.*)/g, '');
 
         // google images (blogger, gdrive, gphotos)
         if (bmv_load_gi) {
           var sNum = el('.cm_size').innerHTML;
-          imgs = imgs.replace(/\/([swh]\d+)(?:-[\w]+[^\/]*)?\//, '/'+ sNum +'/');
-          imgs = imgs.replace(/=[swh](\d+).*/, '='+ sNum);
-          if (imgs.indexOf('docs.google') != -1) imgs = 'https://lh3.googleusercontent.com/d/'+ imgs.match(/.*id=([^&]+)/)[1] +'='+ sNum;
+          img = img.replace(/\/([swh]\d+)(?:-[\w]+[^\/]*)?\//, '/'+ sNum +'/');
+          img = img.replace(/=[swh](\d+).*/, '='+ sNum);
+          if (img.indexOf('docs.google') != -1) img = 'https://lh3.googleusercontent.com/d/'+ img.match(/.*id=([^&]+)/)[1] +'='+ sNum;
         }
       }
 
       if (note == 'single') {
-        if (bmv_current == 'chapter') img.style.minHeight = '750px';
-        lazyQueue({"elem": img, "img": imgs});
+        if (bmv_current == 'chapter') {
+          elem.style.minHeight = '750px';
+          elem.removeAttribute('src');
+        }
+        lazyQueue({"elem": elem, "img": img});
       } else {
-        if (!bmv_dt_lazy.some(function(item) {return item.elem == img})) {
-          bmv_dt_lazy.push({"elem": img, "img": imgs});
+        if (!bmv_dt_lazy.some(function(item) {return item.img == img})) {
+          bmv_dt_lazy.push({"elem": elem, "img": img});
           lazyQueue();
         }
       }
@@ -664,6 +711,8 @@ function bmf_meta_tags(note, data) {
 // #===========================================================================================#
 
 function bmf_member_notif(info, opt) {
+  clearTimeout(bmv_mnotif_timeout);
+
   if (info == 'reset') {
     el('.member .m-notif').classList.remove('error');
     el('.member .m-notif').classList.add('no_items');
@@ -686,7 +735,7 @@ function bmf_member_notif(info, opt) {
     el('.member .m-notif').classList.add('error');
   } else {
     if (m_info == 'email-verification') {
-      m_msg = '<span class="success">Link verifikasi email terkirim ke <b>'+ fbase_user.email +'</b></span>\nSilahkan cek folder "Kotak Masuk" atau "Spam" di email.';
+      m_msg = '<span class="success">Link verifikasi email terkirim ke <b>'+ fbase_user.email +'</b></span>. Silahkan cek folder "Kotak Masuk" atau "Spam" di email.';
     } else {
       m_msg = '<span class="success">'+ m_msg +'</b></span>';
     }
@@ -697,8 +746,8 @@ function bmf_member_notif(info, opt) {
 
   if (opt && 'timer' in opt) {
     var milliseconds = isNumeric(opt.timer) ? opt.timer : Number(opt.timer);
-    setTimeout(function() {
-      el('.member .m-notif').classList.add('no_items');
+    bmv_mnotif_timeout = setTimeout(function() {
+      if (el('.member .m-notif')) el('.member .m-notif').classList.add('no_items');
     }, milliseconds);
   }
 }
@@ -729,16 +778,30 @@ function bmf_member_valid(note, elem, elem_c) {
   return m_valid;
 }
 
+function bmf_member_hibp(note, user, callback) {
+  if (user.email.search(new RegExp(user.pass, 'i')) != -1 || user.pass.search(new RegExp(user.name, 'i')) != -1) {
+    if (callback) callback(true);
+  } else {
+    bmf_loadXMLDoc({note:`xhr/${bmv_current}/${note}`}, `${api_path}/tools/hibp.php?pass=${btoa(user.pass)}`, function(n, data) {
+      var pwned, hibp = JSON.parse(data.response);
+      if (hibp.pawned > 0) pwned = true;
+      if (callback) callback(pwned);
+    });
+  }
+}
+
 function bmf_email_verification(note, user, callback) {
+  // Default expiration time: https://github.com/firebase/firebase-js-sdk/issues/1884#issuecomment-545598830
   fbase.auth().languageCode = 'id';
   user.sendEmailVerification({
     url: `${bmv_homepage}#/member/profile`
   }).then(() => {
-    bmf_member_notif(`success/${note}/email-verification`);
+    cookies.set('bmv_signup_verify', 'true', 'hour|1');
+    if (bmv_prm_slug == 'profile') bmf_member_notif(`success/${note}/email-verification`);
     if (callback) callback();
   }).catch(function(error) {
     bmf_member_notif('error/verification/'+ error.code);
-    el('.m-profile .m-detail').classList.remove('loading', 'loge');
+    if (bmv_prm_slug == 'profile') el('.m-profile .m-detail').classList.remove('loading', 'loge');
     console.error('!! Error: Firebase sendEmailVerification, code: '+ error.code +', message: '+ error.message);
     // alert('!! Error: Firebase sendEmailVerification(\n'+ error.message);
   });
@@ -1077,13 +1140,13 @@ function bmf_bmhs_html(note) {
         str_bmhs += '<div class="cover f_grow">';
         str_bmhs += '<a href="#/series/'+ slug;
         if (m_newtab) str_bmhs += '" target="_blank';
-        str_bmhs += '"><img style="min-height:225px;" class="radius full_img loading loge lazy1oad" data-src="'+ bmhs_arr[i].cover +'" alt="'+ title +'" title="'+ title +'"></a>';
+        str_bmhs += '"><img style="min-height:225px;" class="radius full_img loading loge lazy1oad" data-src="'+ bmhs_arr[i].cover +'" alt="'+ title +'" title="'+ title +'" referrerpolicy="no-referrer"></a>';
         str_bmhs += '<span class="type m-icon btn radius '+ bmhs_arr[i].type +'"></span>';
         if (bmhs_arr[i].status == 'completed') str_bmhs += '<span class="completed m-icon btn red radius">completed</span>';
         if (bmhs_arr[i].history == 'true') {
           var m_visited = genArray(bmhs_arr[i].hs_visited);
           m_visited = sortBy(m_visited, 'added'); //descanding
-          str_bmhs += '<span class="last-read m-icon btn green clamp lc1" title="Last Read">ch. '+ m_visited[0].number +'</span>';
+          str_bmhs += '<span class="last-read m-icon btn green nowrap" title="Last Read">ch. '+ m_visited[0].number +'</span>';
         }
         str_bmhs += '</div>'; //.cover
         str_bmhs += '<div class="title"><a href="#/series/'+ slug;
@@ -1094,24 +1157,32 @@ function bmf_bmhs_html(note) {
         str_bmhs += '<div class="cover">';
         str_bmhs += '<a href="#/series/'+ slug;
         if (m_newtab) str_bmhs += '" target="_blank';
-        str_bmhs += '"><img style="min-height:130px;" class="radius full_img loading loge lazy1oad" data-src="'+ bmhs_arr[i].cover +'" alt="'+ title +'" title="'+ title +'"></a>';
+        str_bmhs += '"><img style="min-height:130px;" class="radius full_img loading loge lazy1oad" data-src="'+ bmhs_arr[i].cover +'" alt="'+ title +'" title="'+ title +'" referrerpolicy="no-referrer"></a>';
         if (bmhs_arr[i].bookmarked == 'true') str_bmhs += '<span class="bookmarked m-icon btn green" title="Bookmarked"><svg data-name="fa/bookmark" xmlns="http://www.w3.org/2000/svg" width="0.84em" height="1em" viewBox="0 0 1280 1536"><path fill="currentColor" d="M1164 0q23 0 44 9q33 13 52.5 41t19.5 62v1289q0 34-19.5 62t-52.5 41q-19 8-44 8q-48 0-83-32l-441-424l-441 424q-36 33-83 33q-23 0-44-9q-33-13-52.5-41T0 1401V112q0-34 19.5-62T72 9q21-9 44-9h1048z"/></svg></span>';
         if (bmhs_arr[i].status && bmhs_arr[i].status.search(/completed?|tamat/i) != -1) str_bmhs += '<span class="completed m-icon btn red radius">completed</span>';
         str_bmhs += '</div>'; //.cover
         str_bmhs += '<div class="detail">';
         str_bmhs += '<div class="title"><a href="#/series/'+ slug;
         if (m_newtab) str_bmhs += '" target="_blank';
-        str_bmhs += '"><h3 class="hd-title clamp lc1">'+ title +'</h3></a></div>';
+        str_bmhs += '"><h3 class="hd-title nowrap">'+ title +'</h3></a></div>';
         str_bmhs += '<ul class="">';
         var m_visited = genArray(bmhs_arr[i].hs_visited);
         m_visited = sortBy(m_visited, 'added'); //descanding
         for (var j = 0; j < m_visited.length; j++) {
+          var chk_site = m_visited[[j]].site != bmv_dt_settings.source.site;
           var m_url = slug +'/'+ m_visited[j].number +'/';
           if (bmv_dt_settings.ch_url) m_url = m_url + encodeURIComponent('url='+ m_visited[j].url +'&');
           m_url = m_url + encodeURIComponent('site='+ m_visited[j].site);
-          str_bmhs += '<li class="flex"><a class="f_grow f_clamp" href="#/chapter/'+ m_url;
-          if (m_newtab) str_bmhs += '" target="_blank';
-          str_bmhs += '">Chapter '+ m_visited[j].number +'</a><span class="time-ago" title="'+ dateLocal(m_visited[j].added) +'">'+ timeDifference(m_visited[j].added) +'</span></li>';
+          str_bmhs += '<li class="flex"><';
+          if (chk_site) {
+            str_bmhs += 'span title="source: '+ m_visited[j].site +'"';
+          } else {
+            str_bmhs += 'a href="#/chapter/'+ m_url +'"';
+            if (m_newtab) str_bmhs += ' target="_blank"';
+          }
+          str_bmhs += ' class="f_grow f_clamp">Chapter '+ m_visited[j].number +'</'
+          str_bmhs += chk_site ? 'span' : 'a';
+          str_bmhs += '><span class="time-ago" title="'+ dateLocal(m_visited[j].added) +'">'+ timeDifference(m_visited[j].added) +'</span></li>';
         }
         str_bmhs += '</ul>';
         str_bmhs += '</div>'; //.detail
@@ -1196,11 +1267,17 @@ function bmf_profile_save(parent) {
   m_info += '/'+ (pr_data == 'name' ? 'displayName' : pr_data);
 
   bmf_profile_change(pr_data, m_info, m_input.value, function() {
-    bmf_member_notif(`success/profile_save/${pr_data}-saved`, {timer: 2000, message: 'Berhasil disimpan.'});
-    if (pr_data == 'email') removeElem(el('.m-email .m-verified'));
+    bmf_member_notif(`success/profile_save/${pr_data}-saved`, {timer: 3000, message: 'Berhasil disimpan.'});
+    if (pr_data == 'email') {
+      el('.m-email').classList.remove('verified');
+      el('.m-email .m-input').classList.add('f_top');
+      el('.m-email .m-verified').classList.add('not', 'block');
+      el('.m-email .m-verified').innerHTML = bmv_settings.l10n.profile.verified_not;
+    }
     el('.m-profile .m-detail').classList.remove('loading', 'loge');
     el('.m-edit', parent).classList.remove('no_items');
     el('.m-save', parent).parentElement.classList.add('no_items');
+    el('.m-profile .m-'+ pr_data).classList.remove('edit');
     if (pr_data == 'password') {
       el('.m-pass-c', parent).value = '';
       el('.m-pass-n', parent).value = '';
@@ -1221,7 +1298,7 @@ function bmf_member_profile_fnc() {
 
       var parent = this.parentElement;
       var pr_data = parent.dataset.edit;
-      if (pr_data != 'backup') this.classList.add('no_items');
+      this.classList.add('no_items');
       el('.m-profile .m-'+ pr_data).classList.add('edit');
       if (pr_data != 'cover' && el('.m-save', parent)) el('.m-save', parent).parentElement.classList.remove('no_items');
 
@@ -1247,23 +1324,6 @@ function bmf_member_profile_fnc() {
         el('input[type=text]', parent).classList.add('no_items');
         el('.m-pass-n', parent).parentElement.classList.remove('no_items');
         el('.m-pass-n', parent).focus();
-      }
-
-      if (pr_data == 'backup' && fbase_user && fbase_user['\x74\x69\x65\x72'] == '\x70\x72\x6f') {
-        this.disabled = true;
-        el('.m-profile .m-detail').classList.add('loading', 'loge');
-        bmf_loadXMLDoc(`xhr/${bmv_current}/backup`, `${api_url}/firebase/backup.php?uid=${fbase_user.uid}&manual`, function(n, data) {
-          el('.m-edit', parent).disabled = false;
-          el('.m-profile .m-detail').classList.remove('loading', 'loge');
-
-          if (data.code != 200 || data.response.indexOf('Error:') != -1) {
-            if (data.code == 200) console.error(data.response);
-            alert(data.response);
-          } else {
-            console.log(data.response);
-            bmf_member_notif(`success/profile/backup`, {timer: 2000, message: 'Backup data berhasil.'});
-          }
-        });
       }
 
       if (pr_data == 'delete') {
@@ -1292,6 +1352,8 @@ function bmf_member_profile_fnc() {
       el('.m-profile .m-'+ pr_data).classList.remove('edit');
 
       if (pr_data == 'cover') {
+        el('.m-file', parent).value = '';
+        el('.m-upload span').innerHTML = 'Choose File...';
         el('.m-upload', parent).classList.add('no_items');
       }
 
@@ -1320,6 +1382,14 @@ function bmf_member_profile_fnc() {
     });
   });
 
+  function bmf_rsave(data, text, color) {
+    el('.m-reauth .r-save').innerHTML = bmv_settings.l10n.member[text];
+    el('.m-reauth .r-save').className = 'r-save btn '+ color +' f_grow';
+    el('.m-reauth .r-save').dataset.active = data;
+    el('.m-reauth').classList.remove('no_items');
+    el('.m-reauth input').focus();
+  }
+
   // member: save button
   el('.m-profile .m-save', 'all').forEach(function(item) {
     item.addEventListener('click', function() {
@@ -1330,10 +1400,7 @@ function bmf_member_profile_fnc() {
       el('.m-reauth input').placeholder = pr_data == 'password' ? 'Old Password' : 'Password';
 
       if (pr_data == 'delete') {
-        el('.m-reauth .r-save').innerHTML = bmv_settings.l10n.member.delete;
-        el('.m-reauth .r-save').dataset.active = pr_data;
-        el('.m-reauth').classList.remove('no_items');
-        el('.m-reauth input').focus();
+        bmf_rsave(pr_data, 'delete', 'red');
         return;
       }
 
@@ -1342,19 +1409,25 @@ function bmf_member_profile_fnc() {
 
       if (pr_data == 'cover' && el('.m-file', parent).files.length > 0) {
         parent.classList.add('loading', 'loge');
-        file = el('.m-file', parent).files[0];
-        var storage_ref = fbase.storage().ref('users').child(fbase_user.uid);
+        var file = el('.m-file', parent).files[0];
 
+        var storage_ref = fbase.storage().ref('users').child(fbase_user.uid +'-profile');
         storage_ref.put(file).then(function() {
           storage_ref.getDownloadURL().then(function(url) {
             bmf_profile_change(pr_data, 'updateProfile/photoURL', url, function() {
               parent.classList.remove('loading', 'loge');
+              el('.m-file', parent).value = '';
               el('.m-cover label span').innerHTML = 'Choose File...';
               el('.m-edit', parent).classList.remove('no_items');
               el('.m-upload', parent).classList.add('no_items');
               el('img', parent).src = url;
             });
           });
+        }).catch(function(error) {
+          bmf_member_notif('error/profile-upload/'+ error.code);
+          parent.classList.remove('loading', 'loge');
+          console.error('!! Error: Firebase storage(), code: '+ error.code +', message: '+ error.message);
+          // alert('!! Error: Firebase storage(\n'+ error.message);
         });
       }
 
@@ -1365,18 +1438,22 @@ function bmf_member_profile_fnc() {
           el('.m-profile .m-detail').classList.add('loading', 'loge');
           bmf_profile_save(parent);
         } else {
-          el('.m-reauth .r-save').dataset.active = pr_data;
-          el('.m-reauth').classList.remove('no_items');
-          el('.m-reauth input').focus();
+          bmf_rsave(pr_data, 'save', 'green');
         }
       }
 
       if (pr_data == 'password') {
         if (bmf_member_valid('pass', in_elem) && bmf_member_valid('pass-c', in_elem, el('.m-pass-c', parent))) {
-          el('.m-reauth .r-save').innerHTML = bmv_settings.l10n.member.save;
-          el('.m-reauth .r-save').dataset.active = pr_data;
-          el('.m-reauth').classList.remove('no_items');
-          el('.m-reauth input').focus();
+          el('.m-profile .m-detail').classList.add('loading', 'loge');
+          var d_user = {"name":fbase_user.displayName,"email":fbase_user.email,"pass":in_elem.value};
+          bmf_member_hibp('profile/change-password', d_user, function(pawned) {
+            if (pawned) {
+              bmf_member_notif('error/profile/change-password', {message: bmv_settings.l10n.member.pass_safe});
+            } else {
+              bmf_rsave(pr_data, 'save', 'green');
+            }
+            el('.m-profile .m-detail').classList.remove('loading', 'loge');
+          });
         }
       }
     });
@@ -1395,6 +1472,8 @@ function bmf_member_profile_fnc() {
       if (this.classList.contains('wait')) return;
       el('.m-profile .m-detail').classList.add('loading', 'loge');
       bmf_email_verification('verify', fbase_user, function() {
+        if (el('.notif .not_verified')) removeElem('.notif .not_verified');
+
         el('.m-profile .m-detail').classList.remove('loading', 'loge');
         el('.m-email .m-verified.not').innerHTML = 'Kirim ulang link verifikasi email dalam (<b>60</b>) detik</b>';
         el('.m-email .m-verified.not').classList.add('wait');
@@ -1406,7 +1485,7 @@ function bmf_member_profile_fnc() {
           if (timeleft <= 0) {
             clearInterval(verifyTimer);
             el('.m-email .m-verified.not').classList.remove('wait');
-            el('.m-email .m-verified.not').innerHTML = 'Email belum diverifikasi. <b>Verifikasi sekarang</b>';
+            el('.m-email .m-verified.not').innerHTML = bmv_settings.l10n.profile.verified_not;
           }
         }, 1000);
       });
@@ -1426,16 +1505,20 @@ function bmf_member_profile_fnc() {
       fbase_user.reauthenticateWithCredential(credential).then(function() {
         var a_data = el('.m-reauth .r-save').dataset.active;
         if (a_data == 'delete') {
-          // remove from database
-          bmf_fbase_db_remove('remove-user', `users/${fbase_user.uid}`, function() {
-            console.warn(`${fbase_user.email} user data removed from database`);
-            // remove from users list
-            fbase_user.delete().then(function() {
-              console.warn(`${fbase_user.email} user account removed`);
-              wl.hash = '#/latest';
-            }).catch(function(error) {
-              console.error('!! Error: Firebase delete(), code: '+ error.code +', message: '+ error.message);
-              alert('!! Error: Firebase delete(\n'+ error.message);
+          // remove user data from storage
+          bmf_fbase_storage_delete(fbase_user.uid, function() {
+            console.warn(`Firebase: user ${fbase_user.email} removed from storage`);
+            // remove user data from database
+            bmf_fbase_db_remove('remove-user', `users/${fbase_user.uid}`, function() {
+              console.warn(`Firebase: user ${fbase_user.email} removed from database`);
+              // remove user from users list
+              fbase_user.delete().then(function() {
+                console.warn(`Firebase: user account ${fbase_user.email} removed`);
+                wl.hash = '#/latest';
+              }).catch(function(error) {
+                console.error('!! Error: Firebase user delete(), code: '+ error.code +', message: '+ error.message);
+                alert('!! Error: Firebase user delete(\n'+ error.message);
+              });
             });
           });
         } else {
@@ -1451,19 +1534,9 @@ function bmf_member_profile_fnc() {
   });
 
   el('.m-reauth .r-cancel').addEventListener('click', function() {
+    el('.m-reauth input').value = '';
     el('.m-reauth').classList.add('no_items');
   });
-}
-
-function bmf_settings_sh(chk, elem) {
-  // show/hide "CDN for chapter"
-  if (chk) {
-    elem.disabled = false;
-    elem.parentElement.classList.remove('disabled');
-  } else {
-    elem.disabled = true;
-    elem.parentElement.classList.add('disabled');
-  }
 }
 
 function bmf_settings_changed(elem) {
@@ -1499,20 +1572,25 @@ function bmf_settings_fill(settings) {
     el('.st-src-link input').checked = settings.src_link;
     el('.st-cm-load input').checked = settings.cm_load;
 
-    el('.st-cdn input', 'all').forEach(function(item) {
-      bmf_settings_sh(el('.st-ch-menu input').checked, item);
-      if (item.value == settings.cdn) item.checked = true;
-    });
+    el(`.st-cdn input[value="${settings.cdn}"]`).checked = true;
+    if (!el('.st-ch-menu input').checked) {
+      el('#st-cdn').classList.add('disabled');
+      el('.st-cdn input', 'all').forEach(function(item){ item.disabled = true; });
+    }
   }
 
-  el('.st-theme input', 'all').forEach(function(item) {
-    if (item.value == settings.theme) item.checked = true;
-  });
+  el(`.st-theme input[value="${settings.theme}"]`).checked = true;
 
   el('.st-cache input').value = settings.cache;
-  el('.st-quality input').value = settings.quality;
-  el('.st-history input').checked = settings.hs_stop;
-  el('.st-ch-url input').checked = settings.ch_url;
+  el('#st-hs-stop').checked = settings.hs_stop;
+  el('#st-img-resize').checked = settings.img_resize;
+  el('#st-ch-url').checked = settings.ch_url;
+
+  el('.st-quality input').value = settings.resize_quality;
+  if (!el('#st-img-resize').checked) {
+    el('.st-quality').classList.add('disabled');
+    el('.st-quality input').disabled = true;
+  }
 
   var link_list = settings.link.split(', ');
   link_list.forEach(function(item) {
@@ -1530,10 +1608,10 @@ function bmf_member_settings_fnc() {
 
   if (fbase_user && fbase_user['\x74\x69\x65\x72'] == '\x70\x72\x6f') {
     el('.st-ch-menu input').addEventListener('input', function() {
-      var menu_chk = this.checked;
-      el('.st-cdn input', 'all').forEach(function(item) {
-        bmf_settings_sh(menu_chk, item);
-      });
+      var cdn_el = el(`.st-cdn input[value="${bmv_dt_settings.cdn}"]`);
+      cdn_el.checked = true;
+      triggerEvent('change', cdn_el);
+      el('#st-cdn').classList.toggle('disabled');
     });
   }
 
@@ -1548,6 +1626,13 @@ function bmf_member_settings_fnc() {
     var cache = Number(this.value);
     if (cache < Number(e.target.min)) this.value = e.target.min;
     if (cache > Number(e.target.max)) this.value = e.target.max;
+  });
+
+  el('#st-img-resize').addEventListener('input', function() {
+    el('.st-quality').classList.toggle('disabled');
+    el('.st-quality input').value = bmv_dt_settings.resize_quality;
+    triggerEvent('change', el('.st-quality input'));
+    el('.st-quality input').disabled = this.checked ? false : true;
   });
 
   el('.st-quality input').addEventListener('input', function(e) {
@@ -1616,9 +1701,10 @@ function bmf_member_settings_fnc() {
 
     bmv_dt_settings['theme'] = el('.st-theme input:checked').value;
     bmv_dt_settings['cache'] = el('.st-cache input').value;
-    bmv_dt_settings['quality'] = el('.st-quality input').value;
-    bmv_dt_settings['hs_stop'] = el('.st-history input').checked;
-    bmv_dt_settings['ch_url'] = el('.st-ch-url input').checked;
+    bmv_dt_settings['resize_quality'] = el('.st-quality input').value;
+    bmv_dt_settings['hs_stop'] = el('#st-hs-stop').checked;
+    bmv_dt_settings['img_resize'] = el('#st-img-resize').checked;
+    bmv_dt_settings['ch_url'] = el('#st-ch-url').checked;
 
     var link_list = [];
     el('.st-link input:checked', 'all').forEach(function(item) {
@@ -1642,7 +1728,7 @@ function bmf_member_settings_fnc() {
         local('set', 'bmv_user_settings', JSON.stringify(bmv_dt_settings));
         bmv_dt_settings = bmf_update_settings('update', bmv_dt_settings);
         bmf_fbase_db_change('settings|check', bmf_fbase_path('check/settings'), 'set', {update: local_time});
-        bmf_member_notif('success/settings', {timer: 2000, message: 'Pengaturan telah disimpan.'});
+        bmf_member_notif('success/settings', {timer: 3000, message: 'Pengaturan telah disimpan.'});
         el('.st-control .highlighted', 'all').forEach(function(item){ item.classList.remove('highlighted'); });
         window.removeEventListener('beforeunload', beforeUnloadListener);
         document.body.scrollIntoView();
@@ -1661,7 +1747,9 @@ function bmf_member_settings_html() {
     str_settings += '<div class="st-source st-list" id="st-source">';
     str_settings += '<h2>API Sources</h2>';
     for (var site in bmv_settings.source) {
-      str_settings += `<label class="radio"><input type="radio" name="st-source" value="${site}"><span></span>${site}</label>`;
+      str_settings += `<label class="radio" title="${bmv_settings.source[site].type}"><input type="radio" name="st-source" value="${site}"><span></span>${site}`;
+      if ('lang' in bmv_settings.source[site]) str_settings += ` (${bmv_settings.source[site].lang})`;
+      str_settings += '</label>';
     }
     str_settings += '</div>'; //.st-source
     str_settings += '<div class="st-series st-list">';
@@ -1704,18 +1792,18 @@ function bmf_member_settings_html() {
   str_settings += '<h2>Cache Timer</h2>';
   str_settings += '<div><input type="number" id="st-cache" min="10" max="60" step="5" placeholder="30"> minutes (api data)</div>';
   str_settings += '</div>'; //.st-cache
+
+  str_settings += '<div class="st-chapter st-list">';
+  str_settings += '<h2>Chapter</h2>';
+  str_settings += '<label class="checkbox"><input type="checkbox" id="st-img-resize"><span></span>Image Resize (mobile)</label>';
+  str_settings += '<label class="checkbox"><input type="checkbox" id="st-hs-stop"><span></span>Berhenti merekam histori bacaan</label>';
+  str_settings += '<label class="checkbox"><input type="checkbox" id="st-ch-url"><span></span>Gunakan <code>url</code> pada link chapter</label>';
+  str_settings += '</div>'; //.st-chapter
   str_settings += '<div class="st-quality st-list">';
-  str_settings += '<h2>Image Quality (lazyLoad)</h2>';
+  str_settings += '<h2>Image Resize Quality</h2>';
   str_settings += '<div><input type="number" id="st-quality" min="0" max="100" placeholder="50"> percent</div>';
   str_settings += '</div>'; //.st-quality
-  str_settings += '<div class="st-history st-list">';
-  str_settings += '<h2>Histori Bacaan (chapter)</h2>';
-  str_settings += '<label class="checkbox"><input type="checkbox" id="st-hs-stop"><span></span>Berhenti merekam histori bacaan</label>';
-  str_settings += '</div>'; //.st-history
-  str_settings += '<div class="st-ch-url st-list">';
-  str_settings += '<h2>Chapter URL</h2>';
-  str_settings += '<label class="checkbox"><input type="checkbox" id="st-ch-url"><span></span>Gunakan <code>url</code> pada link chapter</label>';
-  str_settings += '</div>'; //.st-ch-url
+
   str_settings += '<div class="st-link st-list">';
   str_settings += '<h2>Buka link di tab baru</h2>';
   str_settings += '<label class="checkbox"><input type="checkbox" id="st-link" value="latest"><span></span>Link di Beranda</label>';
@@ -1760,7 +1848,7 @@ function bmf_member_form_fnc() {
 
         fbase.auth().signInWithEmailAndPassword(m_email.value, m_pass.value).then(function(user) {
           if (wl.href.indexOf('continue=') != -1) {
-            wl.hash = bmf_getParam('continue', wl.href.replace(/\/#/, ''));
+            wl.hash = bmf_getParam('continue', wl.href.replace(/\/#/, ''))[0];
           } else {
             wl.hash = '#/member/profile';
           }
@@ -1807,30 +1895,38 @@ function bmf_member_form_fnc() {
       if (bmf_member_valid('name', m_name) && bmf_member_valid('email', m_email) && bmf_member_valid('pass', m_pass) && bmf_member_valid('pass-c', m_pass, m_pass_c)) {
         m_parent.classList.add('loading', 'loge');
 
-        fbase.auth().createUserWithEmailAndPassword(m_email.value, m_pass.value).then(function(res) {
-          fbase_user = res.user;
+        var d_user = {"name":m_name.value,"email":m_email.value,"pass":m_pass.value};
+        bmf_member_hibp('signup', d_user, function(pawned) {
+          if (pawned) {
+            bmf_member_notif('error/signup', {message: bmv_settings.l10n.member.pass_safe});
+            m_parent.classList.remove('loading', 'loge');
+          } else {
+            fbase.auth().createUserWithEmailAndPassword(m_email.value, m_pass.value).then(function(res) {
+              fbase_user = res.user;
 
-          fbase_user.updateProfile({ displayName: m_name.value }).catch(function(error) {
-            console.error('!! Error: Firebase (signup) set name to displayName, code: '+ error.code +', message: '+ error.message);
-            alert('!! Error: Firebase (signup) set name to displayName\n'+ error.message);
-          });
-
-          var m_profile = bmf_fbase_gen('signup', {name: m_name.value, email: m_email.value});
-          fbase.database().ref(bmf_fbase_path('profile')).set(m_profile, function(error) {
-            if (error) {
-              console.error('!! Error: Firebase (signup) set profile to database, code: '+ error.code +', message: '+ error.message);
-              alert('!! Error: Firebase (signup) set profile to database\n'+ error.message);
-            } else {
-              bmf_email_verification('signup', fbase_user, function() {
-                m_parent.classList.remove('loading', 'loge');
+              fbase_user.updateProfile({ displayName: m_name.value }).catch(function(error) {
+                console.error('!! Error: Firebase (signup) set name to displayName, code: '+ error.code +', message: '+ error.message);
+                alert('!! Error: Firebase (signup) set name to displayName\n'+ error.message);
               });
-            }
-          });
-        }).catch(function(error) {
-          bmf_member_notif('error/signup/'+ error.code);
-          m_parent.classList.remove('loading', 'loge');
-          console.error('!! Error: Firebase createUserWithEmailAndPassword, code: '+ error.code +', message: '+ error.message);
-          // alert('!! Error: Firebase createUserWithEmailAndPassword(\n'+ error.message);
+
+              var m_profile = bmf_fbase_gen('signup', {name: m_name.value, email: m_email.value});
+              fbase.database().ref(bmf_fbase_path('profile')).set(m_profile, function(error) {
+                if (error) {
+                  console.error('!! Error: Firebase (signup) set profile to database, code: '+ error.code +', message: '+ error.message);
+                  alert('!! Error: Firebase (signup) set profile to database\n'+ error.message);
+                } else {
+                  bmf_email_verification('signup', fbase_user, function() {
+                    wl.hash = '#/member/profile';
+                  });
+                }
+              });
+            }).catch(function(error) {
+              bmf_member_notif('error/signup/'+ error.code);
+              m_parent.classList.remove('loading', 'loge');
+              console.error('!! Error: Firebase createUserWithEmailAndPassword, code: '+ error.code +', message: '+ error.message);
+              // alert('!! Error: Firebase createUserWithEmailAndPassword(\n'+ error.message);
+            });
+          }
         });
       }
     });
@@ -1839,7 +1935,13 @@ function bmf_member_form_fnc() {
 
 function bmf_member_fnc() {
   if (fbase_login) {
-    if (bmv_prm_slug == 'profile') bmf_member_profile_fnc();
+    if (bmv_prm_slug == 'profile') {
+      bmf_member_profile_fnc();
+      if (cookies.get('bmv_signup_verify') && !fbase_user.emailVerified) {
+        if (el('.notif .not_verified')) removeElem('.notif .not_verified');
+        bmf_member_notif('success/signup/email-verification');
+      }
+    }
     if (bmv_prm_slug == 'bookmark' || bmv_prm_slug == 'history') {
       var order_by = bmv_prm_slug == 'bookmark' ? 'bookmarked' : bmv_prm_slug;
       bmf_fbase_db_get(`member${bmv_prm_slug}`, bmf_fbase_path('series'), function(res) {
@@ -1926,7 +2028,7 @@ function bmf_build_member() {
       str_member += '<img class="full_img loading loge radius" src="'+ (fbase_user.photoURL ? fbase_user.photoURL : 'https://www.gravatar.com/avatar/?d=mp&s=160') +'" alt="Profile Picture">';
       str_member += '<button class="m-edit btn full m-space-v">'+ bmv_settings.l10n.member.edit +'</button>';
       str_member += '<div class="m-upload flex_wrap no_items">';
-      str_member += '<label class="m-space-v full"><input class="m-file no_items" type="file" name="avatar" accept="image/png, image/jpeg, image/gif" required><span class="clamp lc1">Choose File...</span></label>';
+      str_member += '<label class="m-space-v full"><input class="m-file no_items" type="file" name="avatar" accept="image/png, image/jpeg, image/gif" required><span class="nowrap block">Choose File...</span></label>';
       str_member += '<button class="m-save btn">'+ bmv_settings.l10n.member.save +'</button>';
       str_member += '<button class="m-cancel btn selected">'+ bmv_settings.l10n.member.cancel +'</button>';
       str_member += '</div>'; //.m-upload
@@ -1956,7 +2058,7 @@ function bmf_build_member() {
       if (fbase_user.emailVerified) {
         str_member += '<span class="m-verified" title="Email Verified">&#10004;</span>';
       } else {
-        str_member += '<div class="m-verified not">'+ bmv_settings.l10n.profile.verified_not +'</div>';
+        str_member += '<span class="m-verified not block">'+ bmv_settings.l10n.profile.verified_not +'</span>';
       }
       str_member += '</div>'; //.m-email-i
       str_member += '<button class="m-edit btn">'+ bmv_settings.l10n.member.edit +'</button>';
@@ -1972,20 +2074,12 @@ function bmf_build_member() {
       str_member += '<div class="flex no_items"><button class="m-save btn m-space-h">'+ bmv_settings.l10n.member.save +'</button><button class="m-cancel btn selected">'+ bmv_settings.l10n.member.cancel +'</button></div>';
       str_member += '</div>'; //.m-input
       str_member += '</div>'; //.m-password
-      if (fbase_user && fbase_user['\x74\x69\x65\x72'] == '\x70\x72\x6f') {
-        str_member += '<div class="m-backup mp-list m-trigger flex_wrap">';
-        str_member += '<div class="m-label f_grow">'+ bmv_settings.l10n.profile.backup_account +'</div>';
-        str_member += '<div class="m-input flex_wrap" data-edit="backup">';
-        str_member += '<button class="m-edit btn selected">'+ bmv_settings.l10n.profile.backup_all +'</button>';
-        str_member += '</div>'; //.m-input
-        str_member += '</div>'; //.m-backup
-      }
       str_member += '<div class="m-delete mp-list m-trigger flex_wrap">';
       str_member += '<div class="m-label f_grow">'+ bmv_settings.l10n.profile.delete_account +'</div>';
       str_member += '<div class="m-input flex_wrap" data-edit="delete">';
       str_member += '<button class="m-edit btn red selected">'+ bmv_settings.l10n.profile.delete_permanent +'</button>';
       str_member += '<div class="m-dl-notif full t_center no_items">'+ bmv_settings.l10n.profile.delete_notif +'</div>';
-      str_member += '<div class="m-dl-export full t_center m-space-v no_items">'+ bmv_settings.l10n.profile.export_account +', <a href="'+ api_url +'/firebase/backup.php?uid='+ fbase_user.uid +'&export" download>'+ bmv_settings.l10n.profile.export_all +'</a></div>';
+      str_member += `<div class="m-dl-export full t_center m-space-v no_items">${bmv_settings.l10n.profile.export_account}, <a href="${api_path}/firebase/backup.php?tz=${encodeURIComponent(timezone)}&uid=${fbase_user.uid}&export" download>${bmv_settings.l10n.profile.export_all}</a></div>`;
       str_member += '<div class="flex f_center full no_items"><button class="m-save btn red m-space-h">'+ bmv_settings.l10n.member.delete +'</button><button class="m-cancel btn selected">'+ bmv_settings.l10n.member.cancel +'</button></div>';
       str_member += '</div>'; //.m-input
       str_member += '</div>'; //.m-delete
@@ -2006,7 +2100,7 @@ function bmf_build_member() {
       str_member += '</div>'; //.st-control
     }
     str_member += '</div>';
-    if (bmv_prm_slug == 'profile') str_member += '<div class="m-reauth flex f_perfect no_items"><div class="fp_content"><div class="fp_content"><input type="password" name="password" placeholder="Password" autocomplete="off"><div class="flex full f_between m-space-v"><button class="r-save btn red f_grow" data-active=""></button><button class="r-cancel btn selected f_grow" style="margin-left:15px;">'+ bmv_settings.l10n.member.cancel +'</button></div></div></div>';
+    if (bmv_prm_slug == 'profile') str_member += '<div class="m-reauth flex f_perfect no_items"><div class="fp_content"><div class="fp_content"><input type="password" name="password" placeholder="Password" autocomplete="off"><div class="flex full f_between m-space-v"><button class="r-save btn f_grow" data-active=""></button><button class="r-cancel btn selected f_grow" style="margin-left:15px;">'+ bmv_settings.l10n.member.cancel +'</button></div></div></div>';
     var dc_text = bmv_prm_slug == 'settings' ? 'reset' : 'delete';
     if (bmv_prm_slug.search(/bookmark|history|settings/) != -1) str_member += '<div class="m-confirm flex f_perfect no_items"><div class="fp_content wBox bg2 layer"><div class="fp_content"><p><b>Are you absolutely sure?</b></p><p class="m-space-v">This action will <b>permanently</b> '+ dc_text +' all '+ bmv_prm_slug +' data and <b>cannot</b> be undone.</p><p>Please type <b class="no_select">'+ dc_text +'-all-'+ bmv_prm_slug +'</b> to confirm.</p><input class="full m-space-v" type="text" name="verify" placeholder="'+ dc_text +'-all-'+ bmv_prm_slug +'" autocomplete="off"><div class="flex full f_between"><button class="dc-remove btn red f_grow">'+ bmv_settings.l10n.member[bmv_prm_slug == 'settings' ? 'reset' : 'delete'] +'</button><button class="dc-cancel btn selected f_grow" style="margin-left:15px;">'+ bmv_settings.l10n.member.cancel +'</button></div></div></div>';
   } else {
@@ -2030,11 +2124,6 @@ function bmf_build_member() {
     }
     str_member += '</div>'; //.form-email
     str_member += '</form>';
-    // str_member += '<div class="m-separator t_center"><span>||</span></div>';
-    // str_member += '<div class="form-social flex">';
-    // str_member += '<button class="m-google btn full flex f_center f_middle"><svg data-name="logos/google-icon" xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 256 262"><path fill="#4285F4" d="M255.878 133.451c0-10.734-.871-18.567-2.756-26.69H130.55v48.448h71.947c-1.45 12.04-9.283 30.172-26.69 42.356l-.244 1.622l38.755 30.023l2.685.268c24.659-22.774 38.875-56.282 38.875-96.027"/><path fill="#34A853" d="M130.55 261.1c35.248 0 64.839-11.605 86.453-31.622l-41.196-31.913c-11.024 7.688-25.82 13.055-45.257 13.055c-34.523 0-63.824-22.773-74.269-54.25l-1.531.13l-40.298 31.187l-.527 1.465C35.393 231.798 79.49 261.1 130.55 261.1"/><path fill="#FBBC05" d="M56.281 156.37c-2.756-8.123-4.351-16.827-4.351-25.82c0-8.994 1.595-17.697 4.206-25.82l-.073-1.73L15.26 71.312l-1.335.635C5.077 89.644 0 109.517 0 130.55s5.077 40.905 13.925 58.602l42.356-32.782"/><path fill="#EB4335" d="M130.55 50.479c24.514 0 41.05 10.589 50.479 19.438l36.844-35.974C195.245 12.91 165.798 0 130.55 0C79.49 0 35.393 29.301 13.925 71.947l42.211 32.783c10.59-31.477 39.891-54.251 74.414-54.251"/></svg><span>Google</span></button>';
-    // str_member += '<button class="m-facebook btn full flex f_center f_middle"><svg data-name="simple-icons/facebook" xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24"><path fill="currentColor" d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669c1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg><span>Facebook</span></button>';
-    // str_member += '</div>'; //.form-social
   }
   str_member += '</div>'; //.content
   bmv_el_post.innerHTML = str_member;
@@ -2151,7 +2240,17 @@ function bmf_menu_fnc(img_list) {
     });
     item.addEventListener('input', function() {
       if (this.value > img_list.length) this.value = img_list.length;
-      if (this.classList.contains('cm_ld_all') && !isNumeric(this.value) && this.value != 'all') this.value = 'all';
+      if (this.classList.contains('cm_ld_all')) { //.cm_ld_all
+        if (isNumeric(this.value)) {
+          this.classList.add('cm_all_active');
+          el('.cm_load2').classList.add('cm_n_active');
+        }
+        if (!isNumeric(this.value) && this.value != 'all') {
+          this.value = 'all';
+          this.classList.remove('cm_all_active');
+          el('.cm_load2').classList.remove('cm_n_active');
+        }
+      }
     });
   });
 
@@ -2163,16 +2262,19 @@ function bmf_menu_fnc(img_list) {
     el('.cm_load2').disabled = bmv_chk_pause ? true : false;
     el('.cm_ld_all').disabled = bmv_chk_pause ? true : false;
     el('.cm_ld_reset').disabled = bmv_chk_pause ? true : false;
+    if (el('.cm_ld_all').classList.contains('cm_all_active')) el('.cm_ld_reset').click();
     if (el('.cm_fr_btn').classList.contains('cm_active')) el('.cm_fr_btn').click();
     el('.cm_fr_btn').disabled = bmv_chk_pause ? true : false;
   });
 
   // Load all images
   el('.cm_load .cm_ld_img').addEventListener('click', function() {
+    // "img_list" from bmf_menu_fnc() parameter
     if (isNumeric(el('.cm_ld_all').value)) {
-      bmf_lazyLoad(img_list[Number(el('.cm_ld_all').value) - 1], 'single');
+      var ld_index = Number(el('.cm_ld_all').value);
+      if (is_mobile && isImageLoaded(el(`#reader [data-index="${ld_index}"] img`))) el(`#reader [data-index="${ld_index}"]`).scrollIntoView();
+      bmf_lazyLoad(img_list[ld_index - 1], 'single');
     } else {
-      // "img_list" from bmf_menu_fnc() parameter
       if (!bmv_chk_from) bmv_loaded_img = true;
       var ld_index = bmv_chk_from && el('.cm_fr_min').value != '' ? (Number(el('.cm_fr_min').value) - 1) : 0;
       var ld_length = bmv_chk_from && el('.cm_fr_max').value != '' ? Number(el('.cm_fr_max').value) : img_list.length;
@@ -2185,11 +2287,13 @@ function bmf_menu_fnc(img_list) {
 
   el('.cm_load .cm_ld_reset').addEventListener('click', function() {
     el('.cm_ld_all').value = 'all';
+    el('.cm_ld_all').classList.remove('cm_all_active');
+    el('.cm_load2').classList.remove('cm_n_active');
   });
 
   el('.cm_load .cm_fr_btn').addEventListener('click', function() {
     var ld_from = this.classList.contains('cm_active');
-    el('.cm_ld_all').value = 'all';
+    el('.cm_load .cm_ld_reset').click();
     el('.cm_ld_all').disabled = ld_from && !bmv_chk_pause ? false : true;
     el('.cm_ld_reset').disabled = ld_from && !bmv_chk_pause ? false : true;
     el('.cm_fr_min').disabled = ld_from ? true : false;
@@ -2433,6 +2537,7 @@ function bmf_chapter_history(slug) {
     var c_data = bmv_dt_settings.source.type.search(/eastheme|koidezign/) != -1 ? '/hs_visited' : ''; //different path for cover
 
     bmf_fbase_db_get('chapter/history', `${c_path + c_data}`, function(res) {
+      if (!bmv_dt_chapter) return;
       var ch_data = bmf_fbase_gen('history|info|set', bmv_dt_chapter);
       var ch_visited = {};
 
@@ -2478,7 +2583,7 @@ function bmf_chapter_nav(note, data) {
   if (!bmv_dt_chapter || data.code != 200) return;
   var json = JSON.parse(data.response);
   bmv_dt_series = json;
-  bmf_fbase_slug('chapter', {"id": bmv_dt_chapter.slug, "title": bmv_dt_series.title}, bmf_chapter_history);
+  bmf_fbase_slug('chapter', {"slug": bmv_dt_chapter.slug, "title": bmv_dt_series.title}, bmf_chapter_history);
 
   if (json.status_code == 200) {
     // Chapter navigation
@@ -2513,8 +2618,8 @@ function bmf_chapter_fnc() {
   // if (bmv_settings.direction && !cookies.get(bmv_zoom_id)) bmf_chapter_direction(); //rtl or ltr
   document.addEventListener('keyup', bmf_chapter_key); //Left and right keyboard navigation
 
-  el('#reader .ch-index', 'all').forEach(function(item) {
-    el('.btn', item).addEventListener('click', function(e) {
+  el('#reader .ch-images', 'all').forEach(function(item) {
+    el('.ch-index .btn', item).addEventListener('click', function(e) {
       e.preventDefault();
       if (e.target == e.currentTarget) item.classList.toggle('right');
     });
@@ -2569,7 +2674,7 @@ function bmf_build_chapter(data) {
       images[i] = images[i].replace(/^\s+/, '').replace(/^(%20)+/, '');
       str_chapter += '<a class="ch-images full" data-index="'+ (i + 1) +'" href="'+ images[i] +'#'+ (i + 1);
       if (img_newtab) str_chapter += '" target="_blank';
-      str_chapter += '"><img style="min-height:750px;" class="full_img loading loge lazy1oad" data-index="'+ (i + 1) +'" data-src="'+ images[i] +'" title="'+ img_attr +'" alt="'+ img_attr +'">';
+      str_chapter += '"><img style="min-height:750px;" class="full_img loading loge lazy1oad" data-index="'+ (i + 1) +'" data-src="'+ (images[i] +'#'+ (i + 1)) +'" title="'+ img_attr +'" alt="'+ img_attr +'" referrerpolicy="no-referrer">';
       if (fbase_user && fbase_user['\x74\x69\x65\x72'] == '\x70\x72\x6f' && bmv_dt_settings.ch_index) str_chapter += '<div class="ch-index"><div class="sticky"><div class="btn">'+ (i + 1) +'</div></div></div>';
       str_chapter += '</a>';
 
@@ -2608,26 +2713,10 @@ function bmf_build_chapter(data) {
     if (bmv_dt_settings.ch_menu) bmf_chapter_menu();
     if (bmv_dt_settings.ch_index) document.addEventListener('scroll', bmf_chapter_middle); //ch-index
   }
-  bmf_loadXMLDoc(`xhr/${bmv_current}/nav`, `${api_url}/api/?source=${bmv_dt_settings.source.site}&index=series&slug=${data.slug}&cache=${bmv_dt_settings.cache}`, bmf_chapter_nav); //get data from series for type & chapter list
+  bmf_loadXMLDoc({note:`xhr/${bmv_current}/nav`}, `${api_path}/api/?source=${bmv_dt_settings.source.site}&index=series&slug=${data.slug}&cache=${bmv_dt_settings.cache}`, bmf_chapter_nav); //get data from series for type & chapter list
 }
 
 // #===========================================================================================#
-
-function bmf_series_get_id(title) {
-  var id = '';
-
-  // id from <title>, bug: if title is contains text "episode" or "chapter"
-  var titleId = title || el('title').innerHTML || '';
-  titleId = titleId.replace(/&#{0,1}[a-z0-9]+;/ig, '').replace(/\([^\)]+\)/g, '').replace(/\s+/g, ' ');
-  if (!title) {
-    titleId = titleId.replace(/\s((bahasa|sub(title)?)\s)?indo(nesia)?/i, '').replace(/(baca|read|download)\s/i, '').replace(/\s?(man(ga|hwa|hua)|[kc]omi[kc]s?|novel|anime)\s?/i, '\x20');
-    titleId = titleId.replace(/[\||\-|\–|»](?:.(?![\||\-|\–|»]))+$/, '').replace(/^\s+/g, ''); //old = ^([^\||\-|\–]+)(?:\s[\||\-|\–])?
-  }
-  titleId = titleId.replace(/\./g, '-').replace(/[^\s\w\-]/g, '').replace(/\s+$/g, '').replace(/\s+/g, '-').toLowerCase();
-  id = titleId;
-
-  return id;
-}
 
 function bmf_series_chapter_number(check) {
   var ch_arr = bmv_dt_series.chapter;
@@ -2654,9 +2743,17 @@ function bmf_series_chapter_list(note, data) {
     if (note == 'visited') str_lists += '<div class="ch-title">'+ bmv_settings.l10n.series.visited +'</div>';
     str_lists += '<ul class="flex_wrap">';
     for (var i in data) {
-      str_lists += '<li><a class="full radius" href="#/chapter/'+ bmf_series_chapter_link(note, data[i]);
-      if (s_newtab) str_lists += '" target="_blank';
-      str_lists += '">Chapter '+ data[i].number.replace(/[-\s]((bahasa?[-\s])?indo(nesiaa?)?|full)/, '') +'</a></li>';
+      var chk_site = note == 'visited' && data[i].site != bmv_dt_settings.source.site;
+      str_lists += '<li><';
+      if (chk_site) {
+        str_lists += 'span title="source: '+ data[i].site +'"';
+      } else {
+        str_lists += 'a href="#/chapter/'+ bmf_series_chapter_link(note, data[i]) +'"';
+        if (s_newtab) str_lists += ' target="_blank"';
+      }
+      str_lists += ' class="chapter full radius">Chapter '+ data[i].number.replace(/[-\s]((bahasa?[-\s])?indo(nesiaa?)?|full)/, '') +'</';
+      str_lists += chk_site ? 'span' : 'a';
+      str_lists += '></li>';
     }
     str_lists += '</ul>';
   } else {
@@ -2669,9 +2766,14 @@ function bmf_series_fnc(slug) {
   var s_bm = el('.info-left .bookmark');
 
   el('.info-left img').addEventListener('error', function() {
-    this.classList.remove('loading', 'loge');
-    this.classList.add('no-image');
+    if (this.dataset.src != '' && this.dataset.ref == 'false') {
+      this.src = `${api_path}/tools/img_ref.php?ref=${encodeURIComponent(bmv_lazy_referer)}&url=`+ encodeURIComponent(this.dataset.src);
+    } else {
+      this.classList.remove('loading', 'loge');
+      this.classList.add('no-image');
+    }
   });
+  el('.info-left img').src = el('.info-left img').dataset.src;
 
   // init check bookmark
   if (fbase_login) {
@@ -2825,11 +2927,11 @@ function bmf_build_series(data) {
   str_series += '</div>'; //.post-header
   str_series += '<div class="flex_wrap f_between '+ (fbase_login ? 'login' : 'not-login') +'">';
   str_series += '<div class="info info-left">';
-  str_series += '<div class="cover"><img style="min-height:330px;" class="radius full_img '+ (data.cover == '' ? 'no-image' : 'loading loge') +'" src="'+ data.cover + '" alt="'+ data.title +'" title="'+ data.title +'"></div>';
+  str_series += '<div class="cover"><img style="min-height:330px;" class="radius full_img loading loge" data-src="'+ data.cover + '" data-ref="false" alt="'+ data.title +'" title="'+ data.title +'" referrerpolicy="no-referrer"></div>';
   str_series += '<div class="bookmark wait btn flex f_middle f_center" data-slug="'+ data.slug +'" disabled><span class="svg"></span>Bookmark</div>';
   str_series += '<ul class="detail bg2 layer radius">';
   if (data.detail.type != '') str_series += '<li><b>Type</b> <div class="text">'+ firstUCase(data.detail.type) +'</div></li>';
-  str_series += '<li><b>Status</b> <div class="text">'+ data.detail.status.replace(/berjalan/i, 'Ongoing') +'</div></li>';
+  if (data.detail.status != '') str_series += '<li><b>Status</b> <div class="text">'+ data.detail.status.replace(/berjalan/i, 'Ongoing') +'</div></li>';
   if (data.detail.author != '') str_series += '<li><b>Author</b> <div class="text">'+ data.detail.author +'</div></li>';
   if (data.detail.artist != '') str_series += '<li><b>Artist</b> <div class="text">'+ data.detail.artist +'</div></li>';
   if (data.detail.genre != '') str_series += '<li><b>Genre</b> <div class="text">'+ data.detail.genre +'</div></li>';
@@ -2841,7 +2943,7 @@ function bmf_build_series(data) {
   var s_desc = data.desc.replace(/.*bercerita\stentang\s/i, '');
   str_series += '<div class="desc">';
   str_series += '<b>'+ bmv_settings.l10n.series.synopsis +'</b>';
-  str_series += '<div class="summary'+ (is_mobile && s_desc.length >= 400 ? ' clamp' : '') +'">'+ (s_desc != '' ? s_desc.replace(/\.\s/g, '.<div class="new_line"></div>') : '-') +'</div>';
+  str_series += '<div class="summary'+ (is_mobile && s_desc.length >= 400 ? ' clamp' : '') +'">'+ (s_desc != '' ? s_desc.replace(/(?<!\bno)\.\s/gi, '.<div class="new_line"></div>') : '-') +'</div>';
   if (is_mobile && s_desc.length >= 400) str_series += '<div class="accordion more t_center"><span class="show-more btn bgrey">Show more&#160;&#160;&#x025BC;</span><span class="show-less btn bgrey">Show less&#160;&#160;&#x025B2;</span></div>';
   str_series += '</div>'; //.description
   if (data.detail.genre.search(/adult/i) != -1) str_series += '<div class="warning t_center radius">Series ini dikategorikan sebagai Dewasa/Adult<br>MEMBACA SERIES INI DAPAT <b>MERUSAK OTAKMU</b></div>';
@@ -2866,7 +2968,7 @@ function bmf_build_series(data) {
   str_series += '</div>';
   bmv_el_post.innerHTML = str_series;
 
-  bmf_fbase_slug('series', {"id": bmv_dt_series.slug, "title": bmv_dt_series.title}, bmf_series_fnc);
+  bmf_fbase_slug('series', {"slug": bmv_dt_series.slug, "title": bmv_dt_series.title}, bmf_series_fnc);
   bmf_series_chapter_list('chapter', data.chapter); //Build chapter list
 }
 
@@ -2885,7 +2987,7 @@ function bmf_search_result(data) {
       str_result += '<div class="cover f_grow">';
       str_result += '<a href="#/series/' + series[i].slug;
       if (s_newtab) str_result += '" target="_blank';
-      str_result += '"><img style="min-height:225px;" class="radius full_img loading loge lazy1oad" data-src="' + series[i].cover + '" alt="' + series[i].title + '" title="' + series[i].title + '"></a>';
+      str_result += '"><img style="min-height:225px;" class="radius full_img loading loge lazy1oad" data-src="' + series[i].cover + '" alt="' + series[i].title + '" title="' + series[i].title + '" referrerpolicy="no-referrer"></a>';
       if (series[i].type != '') str_result += '<span class="type m-icon btn radius '+ series[i].type +'" title="'+ firstUCase(series[i].type) +'"></span>';
       if (series[i].completed != '') str_result += '<span class="completed m-icon btn red radius">completed</span>';
       if (series[i].color) str_result += '<span class="color m-icon btn radius" title="Berwarna"><svg data-name="fa-solid/palette" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 512 512"><path fill="currentColor" d="M204.3 5C104.9 24.4 24.8 104.3 5.2 203.4c-37 187 131.7 326.4 258.8 306.7c41.2-6.4 61.4-54.6 42.5-91.7c-23.1-45.4 9.9-98.4 60.9-98.4h79.7c35.8 0 64.8-29.6 64.9-65.3C511.5 97.1 368.1-26.9 204.3 5zM96 320c-17.7 0-32-14.3-32-32s14.3-32 32-32s32 14.3 32 32s-14.3 32-32 32zm32-128c-17.7 0-32-14.3-32-32s14.3-32 32-32s32 14.3 32 32s-14.3 32-32 32zm128-64c-17.7 0-32-14.3-32-32s14.3-32 32-32s32 14.3 32 32s-14.3 32-32 32zm128 64c-17.7 0-32-14.3-32-32s14.3-32 32-32s32 14.3 32 32s-14.3 32-32 32z"/></svg></span>';
@@ -2919,7 +3021,8 @@ function bmf_search_adv_fill_set(url, param, type) {
       if (type == 'text') {
         elem.value = s_value[0];
       } else {
-        el(`.filter .s-${param}[value="${s_value[0]}"]`).checked = true;
+        var checkbox = el(`.filter .s-${param}[value="${s_value[0]}"]`);
+        if (checkbox) checkbox.checked = true;
       }
     }
   }
@@ -2951,7 +3054,7 @@ function bmf_search_adv_param(info) {
   var s_title = el('.s-title') ? bmf_search_adv_value(el('.s-title')) : '';
   var s_status = bmf_search_adv_value(el('.s-status:checked'));
   var s_format = el('.s-format') ? bmf_search_adv_value(el('.s-format:checked')) : '';
-  var s_type = bmf_search_adv_value(el('.s-type:checked'));
+  var s_type = el('.s-type') ? bmf_search_adv_value(el('.s-type:checked')) : '';
   var s_order = bmf_search_adv_value(el('.s-order:checked'));
 
   var s_genre = el('.s-genre:checked', 'all');
@@ -2980,12 +3083,13 @@ function bmf_search_list(param, type) {
     s_param = 'orderby';
     s_list[0].value = 'titleasc';
     s_list[1].value = 'titledesc';
+    s_list = s_list.filter(function(obj) { return obj.value != 'latest'; });
   }
   if (bmv_dt_settings.source.type == 'madara') {
     if (param == 'title') s_param = 's';
     if (param == 'status') {
       s_param += '[]';
-      s_list = [{"value":"on-going","label":"Ongoing"},{"value":"end","label":"Completed"},{"value":"on-hold","label":"Hiatus"}];
+      s_list = [{"value":"on-going","label":"Ongoing"},{"value":"end","label":"Completed"},{"value":"canceled"},{"value":"on-hold","label":"Hiatus"}];
     }
     if (param == 'order') {
       s_param = 'm_orderby';
@@ -3027,9 +3131,11 @@ function bmf_build_search(data) {
     str_search += bmf_search_list('format');
     str_search += '</ul></td></tr>'; //"Format"
   }
-  str_search += '<tr><td>Type</td><td><ul class="type radio flex_wrap">';
-  str_search += bmf_search_list('type');
-  str_search += '</ul></td></tr>'; //"Type"
+  if (bmv_dt_settings.source.site.search(/klikmanga|leviatanscans/) == -1) {
+    str_search += '<tr><td>Type</td><td><ul class="type radio flex_wrap">';
+    str_search += bmf_search_list('type');
+    str_search += '</ul></td></tr>'; //"Type"
+  }
   str_search += '<tr><td>Order by</td><td><ul class="order radio flex_wrap">';
   str_search += bmf_search_list('order');
   str_search += '</ul></td></tr>'; //"Order/Sort"
@@ -3136,15 +3242,15 @@ function bmf_build_contact() {
   str_contact += '<div class="post">';
   str_contact += '<div class="contact-form bg2 layer radius">';
   str_contact += '<iframe class="no_items" id="contact-frame" name="contact-frame"data-loaded="false"></iframe>';
-  str_contact += '<form action="https://docs.google.com/forms/d/1ezK2EoF11JzEYb1Mk5vO0ZJqGOO8sQ3KQq1uHCM-XSY/formResponse" method="POST" target="contact-frame" autocomplete="off">';
-  str_contact += '<div class="contact-name"><input name="entry.2005620554" type="text" placeholder="'+ bmv_settings.l10n.contact.name +'" value="" required></div>';
-  str_contact += '<div class="contact-email"><input name="entry.1045781291" type="email" placeholder="'+ bmv_settings.l10n.contact.email +'" value="" required></div>';
-  str_contact += '<div class="contact-subject"><input name="entry.703833447" type="text" placeholder="'+ bmv_settings.l10n.contact.subject +'" value="" required></div>';
-  str_contact += '<div class="contact-message"><textarea name="entry.839337160" rows="5" cols="25" placeholder="'+ bmv_settings.l10n.contact.message +'" required></textarea></div>';
+  str_contact += '<form action="https://docs.google.com/forms/d/'+ bmv_config.contact.formId +'/formResponse" method="POST" target="contact-frame" autocomplete="off">';
+  str_contact += '<div class="contact-name"><input name="entry.'+ bmv_config.contact.name +'" type="text" placeholder="'+ bmv_settings.l10n.contact.name +'" value="" required></div>';
+  str_contact += '<div class="contact-email"><input name="entry.'+ bmv_config.contact.email +'" type="email" placeholder="'+ bmv_settings.l10n.contact.email +'" value="" required></div>';
+  str_contact += '<div class="contact-subject"><input name="entry.'+ bmv_config.contact.subject +'" type="text" placeholder="'+ bmv_settings.l10n.contact.subject +'" value="" required></div>';
+  str_contact += '<div class="contact-message"><textarea name="entry.'+ bmv_config.contact.message +'" rows="5" cols="25" placeholder="'+ bmv_settings.l10n.contact.message +'" required></textarea></div>';
   str_contact += '<div class="contact-captcha flex"><input class="no_arrow" type="text" minlength="4" maxlength="4" required></div>';
-  str_contact += '<input name="partialResponse" type="hidden" value="[,,&quot;328016698945689561&quot;]">';
+  str_contact += '<input name="partialResponse" type="hidden" value="[,,&quot;'+ bmv_config.contact.response +'&quot;]">';
   str_contact += '<input name="pageHistory" type="hidden" value="0">';
-  str_contact += '<input name="fbzx" type="hidden" value="328016698945689561">';
+  str_contact += '<input name="fbzx" type="hidden" value="'+ bmv_config.contact.response +'">';
   str_contact += '<button class="contact-submit btn full" type="submit" name="submit">'+ bmv_settings.l10n.form.submit +'</button>';
   str_contact += '</div>'; //.contact-form
   str_contact += '<div class="contact-status bg2 layer radius t_center no_items"></div>';
@@ -3172,7 +3278,7 @@ function bmf_build_latest(data) {
     str_latest += '<div class="cover f_grow">';
     str_latest += '<a href="#/series/'+ series[i].slug;
     if (l_newtab) str_latest += '" target="_blank';
-    str_latest += '"><img style="min-height:225px;" class="radius full_img loading loge lazy1oad" data-src="'+ series[i].cover +'" alt="'+ series[i].title +'" title="'+ series[i].title +'"></a>';
+    str_latest += '"><img style="min-height:225px;" class="radius full_img loading loge lazy1oad" data-src="'+ series[i].cover +'" alt="'+ series[i].title +'" title="'+ series[i].title +'" referrerpolicy="no-referrer"></a>';
     if (series[i].type != '') str_latest += '<span class="type m-icon btn radius '+ series[i].type +'" title="'+ firstUCase(series[i].type) +'"></span>';
     if (series[i].completed) str_latest += '<span class="completed m-icon btn red radius">completed</span>';
     if (series[i].color) str_latest += '<span class="color m-icon btn radius" title="Berwarna"><svg data-name="fa-solid/palette" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 512 512"><path fill="currentColor" d="M204.3 5C104.9 24.4 24.8 104.3 5.2 203.4c-37 187 131.7 326.4 258.8 306.7c41.2-6.4 61.4-54.6 42.5-91.7c-23.1-45.4 9.9-98.4 60.9-98.4h79.7c35.8 0 64.8-29.6 64.9-65.3C511.5 97.1 368.1-26.9 204.3 5zM96 320c-17.7 0-32-14.3-32-32s14.3-32 32-32s32 14.3 32 32s-14.3 32-32 32zm32-128c-17.7 0-32-14.3-32-32s14.3-32 32-32s32 14.3 32 32s-14.3 32-32 32zm128-64c-17.7 0-32-14.3-32-32s14.3-32 32-32s32 14.3 32 32s-14.3 32-32 32zm128 64c-17.7 0-32-14.3-32-32s14.3-32 32-32s32 14.3 32 32s-14.3 32-32 32z"/></svg></span>';
@@ -3192,6 +3298,14 @@ function bmf_build_latest(data) {
 }
 
 // #===========================================================================================#
+
+function bmf_notif_add(arr, show = true) {
+  if (!show || arr.length == 0) return;
+  arr.forEach(function(item) {
+    var n_class = 'class' in item ? (' '+ item.class) : '';
+    el('.notif').innerHTML += `<div class="${item.type + n_class} message max t_center layer">${item.message}</div>`;
+  });
+}
 
 function bmf_default_key(e) {
   if (keyEvent(e, 13) && el('.quick-search .qs-field') == e.target) el('.quick-search .qs-search').click();
@@ -3218,6 +3332,8 @@ function bmf_toggle_dark(event) {
 }
 
 function bmf_build_default_fnc() {
+  var is_homepage = bmv_current == 'latest' && bmv_page_num == '1';
+
   // Auto select menu from url
   if (el(`#header .navigation>ul>li>a[href="${wh}"]`)) el(`#header .navigation>ul>li>a[href="${wh}"]`).parentElement.classList.add('selected');
 
@@ -3258,6 +3374,31 @@ function bmf_build_default_fnc() {
     if (el('#back-to')) el('#back-to').classList.add('flex');
   }
 
+  // notification bar
+  bmf_notif_add(bmv_settings.l10n.notif_msg.all);
+  bmf_notif_add(bmv_settings.l10n.notif_msg.homepage, is_homepage);
+  if (fbase_login && !fbase_user.emailVerified) {
+    var e_notif = {"type":"warn","class":"not_verified","message":`Mohon verifikasi email dengan klik link yang dikirim ke <b>${fbase_user.email}</b> di folder <b>inbox/spam</b>.`};
+    if (!cookies.get('bmv_signup_verify')) e_notif.message += '<button class="resend btn">Kirim ulang email verifikasi</button>';
+    bmf_notif_add([e_notif]);
+  }
+
+  var n_ev = el('.notif .not_verified');
+  if (n_ev && el('.resend', n_ev)) {
+      el('.resend', n_ev).addEventListener('click', function() {
+        n_ev.classList.add('loading', 'loge');
+        removeElem(this);
+        bmf_email_verification('verify', fbase_user, function() {
+          if (bmv_prm_slug == 'profile') {
+            removeElem(n_ev);
+          } else {
+            n_ev.classList.remove('loading', 'loge');
+            n_ev.classList.add('pulse');
+          }
+        });
+      });
+    }
+
   if (bmv_current != 'chapter') {
     el('#back-to .to-top').addEventListener('click', function() { document.body.scrollIntoView(); });
     el('#back-to .to-bottom').addEventListener('click', function() { window.scrollTo(0, document.body.scrollHeight); });
@@ -3269,7 +3410,8 @@ function bmf_build_footer() {
   if (bmv_current != 'chapter') str_footer += '<div class="message bg2 t_center layer radius">'+ bmv_settings.l10n.footer_msg +'</div>';
   str_footer += '<div class="flex_wrap '+ (is_mobile ? 'f_center t_center' : 'f_between') +'">';
   str_footer += '<div class="footer-left">© '+ new Date().getFullYear() +', Made with \ud83d\udc96 & \ud83d\ude4c by <a href="https://github.com/bakomon/web" target="_blank" title="Bakomon">Bakomon</a></div>';
-  str_footer += '<div class="footer-right"><a href="#/latest">'+ bmv_settings.l10n.homepage +'</a><span>|</span><a href="'+ bmv_series_list +'">'+ bmv_settings.l10n.all_series +'</a><span>|</span><a href="#/contact">Contact</a><span>|</span><a href="#/search" title="Advanced Search">Advanced search</a></div>';
+  str_footer += '<div class="footer-right"><a href="#/latest">'+ bmv_settings.l10n.homepage +'</a><span>|</span><a href="'+ bmv_series_list +'">'+ bmv_settings.l10n.all_series +'</a><span>|</span><a href="#/contact">Contact</a><span>|</span><a href="#/search" title="Advanced Search">Advanced search</a>';
+  str_footer += '</div>'; //.footer-right
   str_footer += '</div>';
   str_footer += '</div>'; //.footer
   if (bmv_current != 'chapter' || (fbase_user && fbase_user.tier == 'basic')) str_footer += '<div id="back-to"><div class="to-top btn">&#x25B2;</div><div class="to-bottom btn">&#x25BC;</div></div>';
@@ -3285,17 +3427,10 @@ function bmf_build_main() {
   str_main += '</div>'; //.post-content
   str_main += '<div class="others">';
   str_main += '<div class="clear-cache ot-icon pointer no_items" title="Clear Cache"><svg data-name="pajamas/clear-all" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"><path fill="currentColor" fill-rule="evenodd" d="M15.963 7.23A8 8 0 0 1 .044 8.841a.75.75 0 0 1 1.492-.158a6.5 6.5 0 1 0 9.964-6.16V4.25a.75.75 0 0 1-1.5 0V0h4.25a.75.75 0 0 1 0 1.5h-1.586a8.001 8.001 0 0 1 3.299 5.73ZM7 2a1 1 0 1 0 0-2a1 1 0 0 0 0 2Zm-2.25.25a1 1 0 1 1-2 0a1 1 0 0 1 2 0ZM1.5 6a1 1 0 1 0 0-2a1 1 0 0 0 0 2Z" clip-rule="evenodd"/></svg></div>';
-  str_main += '<div class="source ot-icon no_items" title="Source Link"><a href="" target="_blank"><svg data-name="icon-park-solid/source-code" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 48 48"><mask id="ipSSourceCode0"><g fill="none"><path stroke="#fff" stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="M23 40H7a3 3 0 0 1-3-3V11a3 3 0 0 1 3-3h34a3 3 0 0 1 3 3v14.882"/><path fill="#fff" stroke="#fff" stroke-width="4" d="M4 11a3 3 0 0 1 3-3h34a3 3 0 0 1 3 3v9H4v-9Z"/><path stroke="#fff" stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="m34 33l-4 4l4 4m6-8l4 4l-4 4"/><circle r="2" fill="#000" transform="matrix(0 -1 -1 0 10 14)"/><circle r="2" fill="#000" transform="matrix(0 -1 -1 0 16 14)"/></g></mask><path fill="currentColor" d="M0 0h48v48H0z" mask="url(#ipSSourceCode0)"/></svg></a></div>';
+  str_main += '<div class="source ot-icon no_items" title="Source Link"><a href="#" target="_blank"><svg data-name="icon-park-solid/source-code" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 48 48"><mask id="ipSSourceCode0"><g fill="none"><path stroke="#fff" stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="M23 40H7a3 3 0 0 1-3-3V11a3 3 0 0 1 3-3h34a3 3 0 0 1 3 3v14.882"/><path fill="#fff" stroke="#fff" stroke-width="4" d="M4 11a3 3 0 0 1 3-3h34a3 3 0 0 1 3 3v9H4v-9Z"/><path stroke="#fff" stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="m34 33l-4 4l4 4m6-8l4 4l-4 4"/><circle r="2" fill="#000" transform="matrix(0 -1 -1 0 10 14)"/><circle r="2" fill="#000" transform="matrix(0 -1 -1 0 16 14)"/></g></mask><path fill="currentColor" d="M0 0h48v48H0z" mask="url(#ipSSourceCode0)"/></svg></a></div>';
   str_main += '</div>'; //.others
   str_main += '</div>'; //.main
   return str_main;
-}
-
-function bmf_build_notif() {
-  var str_notif = '<div class="notif">';
-  str_notif += '<div class="message max t_center layer">'+ bmv_settings.l10n.notif_msg +'</div>';
-  str_notif += '</div>'; //.notif
-  return str_notif;
 }
 
 function bmf_build_header() {
@@ -3310,13 +3445,13 @@ function bmf_build_header() {
     str_head += '</div>'; //.nav-toggle
     str_head += '<span class="f_grow"></span>';
   }
-  var logo_img = './images/logo-text.png';
-  str_head += '<div class="title"><a href="./" title="Bakomon - Baca Komik Online"><'+ tag_head +' class="text">Bakomon</'+ tag_head +'><img alt="Bakomon" src="'+ logo_img +'" title="Bakomon - Baca Komik Indonesia Online"></a></div>'; //blogger
+  var logo_img = bmv_config.logo || './images/logo-text.png';
+  str_head += '<div class="title"><a href="./" title="Bakomon - Baca Komik Online"><'+ tag_head +' class="text">Bakomon</'+ tag_head +'><img alt="Bakomon" src="'+ logo_img +'" title="Bakomon - Baca Komik Indonesia Online"></a></div>';
   str_head += '<span class="f_grow"></span>';
   str_head += '<div class="navigation"><ul class="'+ (is_mobile ? 'bg2' : 'flex') +'">';
   str_head += '<li><a href="#/latest">'+ bmv_settings.l10n.homepage +'</a></li><li><a href="'+ bmv_series_list +'">'+ bmv_settings.l10n.all_series +'</a></li><li><a href="#/search" title="Advanced Search">Adv Search</a></li><li><a href="#/contact">Contact</a></li>';
   if (fbase_login) {
-    str_head += '<li class="dropdown"><a href="javascript:void(0)">Member</a><ul class="full"><li class="selected"><a class="clamp lc1" href="javascript:void(0)" title="'+ fbase_user.uid +'">'+ fbase_user.email +'</a></li><li><a href="#/member/profile">'+ bmv_settings.l10n.member.profile +'</a></li><li><a href="#/member/bookmark">Bookmark</a></li><li><a href="#/member/history">History</a></li><li><a href="#/member/settings">'+ bmv_settings.l10n.member.settings +'</a></li><li><a href="javascript:bmf_fbase_logout()">'+ bmv_settings.l10n.member.logout +'</a></li></ul></li>';
+    str_head += '<li class="dropdown"><a href="javascript:void(0)">Member</a><ul class="full"><li class="selected"><a class="clamp lc1" href="javascript:void(0)" title="'+ fbase_user.uid +' | '+ fbase_user.displayName +'">'+ fbase_user.email +'&#12644;</a></li><li><a href="#/member/profile">'+ bmv_settings.l10n.member.profile +'</a></li><li><a href="#/member/bookmark">Bookmark</a></li><li><a href="#/member/history">History</a></li><li><a href="#/member/settings">'+ bmv_settings.l10n.member.settings +'</a></li><li><a href="javascript:bmf_fbase_logout()">'+ bmv_settings.l10n.member.logout +'</a></li></ul></li>';
   } else {
     str_head += '<li><a href="#/member/login">'+ bmv_settings.l10n.member.login +'</a></li>';
     str_head += '<li><a href="#/member/signup">'+ bmv_settings.l10n.member.signup +'</a></li>';
@@ -3337,6 +3472,7 @@ function bmf_build_header() {
   str_head += '<div class="theme-switch"></div>';
   str_head += '</div></div>';
   str_head += '<div class="line"></div>';
+  str_head += '<div class="notif"></div>';
   return str_head;
 }
 
@@ -3344,7 +3480,6 @@ function bmf_build_default() {
   // Build "main" element
   var bmv_parent = el('.atoz');
   bmv_parent.innerHTML = bmf_build_header();
-  if (bmv_current == 'latest' && bmv_page_num == '1' && bmv_settings.l10n.notif_msg != '') bmv_parent.innerHTML += bmf_build_notif();
   bmv_parent.innerHTML += bmf_build_main();
   bmv_parent.innerHTML += bmf_build_footer();
   bmv_el_post = el('.post-info');
@@ -3481,7 +3616,7 @@ function bmf_build_page_direct(current) {
 
   if (current == 'search') bmf_build_search();
   if (current == 'member') bmf_build_member();
-  if (current == 'contact') bmf_build_contact();
+  if (current == 'contact' && bmv_config.contact) bmf_build_contact();
 
   bmf_meta_tags('direct'); //Meta tags
   setTimeout(function() { document.body.classList.remove('loading', 'lody', 'no_scroll') }, 500); //show page
@@ -3495,6 +3630,8 @@ function bmf_build_page_api(json) {
   bmf_build_default();
 
   if (json.status_code == 200) {
+    bmv_lazy_referer = new URL(json.source).origin;
+
     // Build element post
     if (bmv_current == 'latest') bmf_build_latest(json);
     if (bmv_current == 'search') bmf_build_search(json);
@@ -3549,7 +3686,7 @@ function bmf_param_member() {
     bmv_prm_slug = list_wh[2];
     if (fbase_login) {
       if (wl.href.indexOf('continue=') != -1) {
-        wl.hash = bmf_getParam('continue', wl.href.replace(/\/#/, ''));
+        wl.hash = bmf_getParam('continue', wl.href.replace(/\/#/, ''))[0];
         return;
       }
       if (bmv_prm_slug.search(/profile|bookmark|history|settings/i) == -1) {
@@ -3573,7 +3710,7 @@ function bmf_param_member() {
 
   console.log(`page: ${bmv_current}/${bmv_prm_slug}`);
   bmf_build_page_direct(bmv_current);
-  if (bmv_prm_slug == 'profile' && typeof firebase.storage === 'undefined') addScript({data:'https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js'});
+  if (bmv_prm_slug == 'profile' && typeof firebase.storage === 'undefined') addScript({data:'https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js'});
 }
 
 function bmf_build_page(note, data) {
@@ -3586,8 +3723,8 @@ function bmf_build_page(note, data) {
   } else {
     try {
       res = JSON.parse(data.response);
-    } catch (e) {
-      res = {"status_code": 0, "message": e};
+    } catch(e) {
+      res = {"status_code": 0, "response": data.response, "message": 'error' in data ? data.error : e};
     }
     bmf_build_page_api(res);
   }
@@ -3615,8 +3752,8 @@ function bmf_gen_url() {
     bmv_dt_settings['cache'] = url_cache;
   }
 
-  bmv_url_api = `${api_url}/api/${url_param}&cache=${bmv_current == 'search' ? '0' : bmv_dt_settings.cache}`;
-  bmf_loadXMLDoc(`xhr/${bmv_current}`, bmv_url_api, bmf_build_page);
+  bmv_url_api = `${api_path}/api/${url_param}&cache=${bmv_current == 'search' ? '0' : bmv_dt_settings.cache}`;
+  bmf_loadXMLDoc({note:`xhr/${bmv_current}`}, bmv_url_api, bmf_build_page);
 }
 
 function bmf_build_load(note) {
@@ -3690,6 +3827,7 @@ function bmf_reset_var() {
   bmv_el_result = null;
   bmv_el_images = null;
   bmv_url_api = null;
+  bmv_lazy_referer = null;
   document.removeEventListener('scroll', bmf_page_scroll);
   document.removeEventListener('scroll', bmf_chapter_middle);
   document.removeEventListener('keyup', bmf_default_key);
@@ -3697,7 +3835,6 @@ function bmf_reset_var() {
   document.removeEventListener('keyup', bmf_chapter_key);
   document.removeEventListener('keyup', bmf_bmhs_key);
   document.body.classList.remove('header-floating', 'header-show');
-  el('#addons').classList.remove('active');
 }
 
 function bmf_update_settings(note, newdata) {
@@ -3768,17 +3905,18 @@ function bmf_get_fragment() {
 
 // #===========================================================================================#
 
-function bmf_fbase_slug(note, data, callback, backup) {
+function bmf_fbase_slug(note, data, callback, id) {
   if (fbase_login) {
-    var f_path = bmf_fbase_path(`series/${data.id}`);
+    var f_path = bmf_fbase_path(`series/${data.slug}`);
     bmf_fbase_db_check(note +'/bookmark/slug', f_path, function(res) {
       if (res) {
-        callback(data.id);
+        callback(data.slug);
       } else {
-        if (backup) {
-          callback(backup);
+        var slug = 'title' in data && data.title.search(/\(remake\)/i) != -1 ? data.slug : id;
+        if (slug) {
+          callback(slug);
         } else {
-          bmf_fbase_slug(note, {"id": bmf_series_get_id(data.title)}, callback, data.id);
+          bmf_fbase_slug(note, {"slug": bmf_get_id(data.title)}, callback, data.slug);
         }
       }
     });
@@ -3789,7 +3927,7 @@ function bmf_fbase_slug(note, data, callback, backup) {
 
 function bmf_fbase_backup() {
   if (!cookies.get('fbase_backup')) {
-    bmf_loadXMLDoc(`xhr/${bmv_current}/backup`, `${api_url}/firebase/backup.php?uid=${fbase_user.uid}`, function(n, data) {
+    bmf_loadXMLDoc({note:`xhr/${bmv_current}/backup`}, `${api_path}/firebase/backup.php?tz=${encodeURIComponent(timezone)}&uid=${fbase_user.uid}`, function(n, data) {
       if (data.code != 200 || data.response.indexOf('Error:') != -1) {
         if (data.code == 200) console.error(data.response);
         alert(data.response);
@@ -3883,6 +4021,38 @@ function bmf_fbase_gen(info, data) {
   return g_data;
 }
 
+function bmf_fbase_storage_delete(uid, callback) {
+  var fileArr = [uid + '-profile', uid + '-database.json'];
+  var deletePromises = [];
+
+  fileArr.forEach(function(item) {
+    var file_ref = fbase.storage().ref().child(`users/${item}`);
+    file_ref.getMetadata()
+      .then(function(metadata) {
+        var deletePromise = file_ref.delete();// File exists, proceed with deletion
+        deletePromises.push(deletePromise);// Create a promise for each deletion operation
+      })
+      .catch(function(error) {
+        if (error.code == 'storage/object-not-found') {
+          // console.warn('Firebase bmf_fbase_storage_delete: Item not found - ' + item);
+        } else {
+          console.error('!! Error: Firebase bmf_fbase_storage_delete (getMetadata), code: ' + error.code + ', message: ' + error.message);
+          alert('!! Error: Firebase bmf_fbase_storage_delete (getMetadata)\n' + error.message);
+        }
+      });
+  });
+
+  // Use Promise.all to wait for all deletion promises to resolve
+  Promise.all(deletePromises)
+    .then(function() {
+      if (callback) callback();
+    })
+    .catch(function(error) {
+      console.error('!! Error: Firebase bmf_fbase_storage_delete, code: '+ error.code +', message: '+ error.message);
+      alert('!! Error: Firebase bmf_fbase_storage_delete(\n'+ error.message);
+    });
+}
+
 function bmf_fbase_db_check(note, path, callback) {
   fbase.database().ref(path).once('value').then(function(snapshot) {
     callback(snapshot.exists() ? true : false);
@@ -3972,6 +4142,7 @@ function bmf_fbase_observer() {
       bmf_fbase_backup();
     } else {
       if (bmv_current.search(/member|series/) != -1 && fbase_login) bmf_fbase_lognotif('logout');
+      cookies.remove('bmv_signup_verify');
       fbase_login = false;
       fbase_user = null;
     }
@@ -4007,7 +4178,7 @@ function bmf_fbase_check() {
 // #===========================================================================================#
 
 // note: prm = param, dt = data, el = element
-var wh, wd, bmv_current, bmv_zoom_id, bmv_max_bmhs, bmv_max_hv, bmv_homepage, bmv_lazy_error, bmv_lazy_skip, bmv_url_api, bmv_connection, bmv_page_type;
+var wh, wd, bmv_current, bmv_zoom_id, bmv_max_bmhs, bmv_max_hv, bmv_homepage, bmv_url_api, bmv_connection, bmv_page_type, bmv_mnotif_timeout;
 var bmv_prm_slug, bmv_prm_chapter;
 var bmv_page_loaded, bmv_chk_query, bmv_chk_nav, bmv_chk_cdn, bmv_chk_gi, bmv_chk_pause, bmv_chk_from, bmv_chk_lazy;
 var bmv_loaded_img, bmv_load_cdn, bmv_load_gi;
@@ -4015,6 +4186,8 @@ var bmv_dt_latest, bmv_dt_search, bmv_dt_series, bmv_dt_chapter, bmv_dt_bmhs, bm
 var bmhs_arr, bmhs_current, bmhs_length;
 var bmv_el_post, bmv_el_result, bmv_el_images;
 var bmv_str_cdn, bmv_str_gi, bmv_str_cdn_url;
+var bmv_lazy_error, bmv_lazy_skip, bmv_lazy_referer;
+var bmv_config = bakomon_config || {};
 var bmv_start = false;
 var bmhs_max = 12;
 var bmhs_nav_max = 3; //min = 3
@@ -4022,7 +4195,7 @@ var bmv_series_list = '#/search/?params=default';
 var bmv_half_screen = Math.floor((window.screen.height / 2) + 30);
 var bmv_zoom = local('get', 'bmv_zoom') ? JSON.parse(local('get', 'bmv_zoom')) : {};
 var bmv_zm_size = {"manga": 800, "manhua": 700, "manhwa": 500};
-var bmv_rgx_cdn = /((?:(?:i\d+|cdn|img)\.)?(wp|statically|image(?:simple|cdn))\.(?:com?|io|app)\/(?:(?:img|v\d+)\/(?:[^\.]+\/)?)?)/i;
+var bmv_rgx_cdn = /((?:(?:i\d+|cdn|img)\.)?(wp|statically|image(?:simple|cdn)|img)\.(?:com?|io|app|gs)\/(?:[^\.]+\/)?)/i;
 var bmv_rgx_gi = /\/([swh]\d+)(?:-[\w]+[^\/]*)?\/|=([swh]\d+).*/i;
 var bmv_genres = ['4-koma','action','adult','adventure','comedy','cooking','crime','demons','doujinshi','drama','ecchi','fantasy','game','ghosts','gore','harem','historical','horror','isekai','josei','kingdom','loli','magic','magical-girls','martial-arts','mature','mecha','medical','military','monster-girls','monsters','music','mystery','one-shot','parody','philosophical','police','post-apocalyptic','psychological','reincarnation','revenge','romance','samurai','school','school-life','sci-fi','seinen','shotacon','shoujo','shounen','slice-of-life','sports','super-power','superhero','supernatural','survival','system','thriller','tragedy','vampires','video-games','villainess','webtoons','wuxia'];
 
@@ -4033,10 +4206,12 @@ var is_mobile = isMobile();
 var is_chrome = isChromium();
 var is_via = !!window.via; //Via Browser "mark.via.gp"
 var is_dark = document.documentElement.classList.contains('dark');
+var timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 var last_scroll = 0;
-var imageoptim_username = 'YOUR_IMAGEOPTIM_USERNAME'; //https://imageoptim.com/api/get?username={USERNAME}
+var imageoptim_username = bmv_config.imageoptim; //https://imageoptim.com/api/get?username={USERNAME}
 var check_point = el('#check-point');
-var api_url = '.';
+var current_path = wl.origin + wl.pathname;
+var api_path = bmv_config.api || current_path.substring(0, current_path.lastIndexOf('/'));
 
 // #===========================================================================================#
 
@@ -4047,8 +4222,9 @@ var fbase_init = false;
 var fbase_login = false;
 var fbase_observer = false;
 var fbase_user = null;
+
 /* Firebase configuration for Firebase JS SDK v7.20.0 and later, measurementId is optional */
-var fbase_config = {
+var fbase_config = bmv_config.fbase || {
   apiKey: "API_KEY",
   authDomain: "PROJECT_ID.firebaseapp.com",
   databaseURL: "https://PROJECT_ID.firebaseio.com",
@@ -4079,9 +4255,10 @@ var bmv_settings = {
     "cdn": 'default',
     "theme": "system",
     "hs_stop": false,
+    "img_resize": false,
+    "resize_quality": 50,
     "ch_url": false,
     "cache": 30,
-    "quality": 50,
     "link": "search, chapter-img, bookmark, history"
   },
   "source": {
@@ -4100,10 +4277,6 @@ var bmv_settings = {
     "maid": {
       "type": "koidezign",
       "site": "maid"
-    },
-    "neumanga": {
-      "type": "koidezign",
-      "site": "neumanga"
     },
     "komikindo": {
       "type": "themesia",
@@ -4128,6 +4301,20 @@ var bmv_settings = {
     "pojokmanga": {
       "type": "madara",
       "site": "pojokmanga"
+    },
+    "klikmanga": {
+      "type": "madara",
+      "site": "klikmanga"
+    },
+    "leviatanscans": {
+      "type": "madara",
+      "site": "leviatanscans",
+      "lang": "en"
+    },
+    "reaperscans": {
+      "type": "themesia",
+      "site": "reaperscans",
+      "lang": "en"
     }
   },
   "tier": {
@@ -4185,6 +4372,7 @@ var bmv_settings = {
       "reset": "Reset",
       "delete_all": "Hapus Semua",
       "select_all": "Pilih Semua",
+      "pass_safe": "kata sandi tidak aman.",
       "login_link": "Sudah punya akun? <a href=\"#/member/login\">masuk disini</a>",
       "signup_link": "Belum punya akun? <a href=\"#/member/signup\">daftar disini</a>",
       "forgot_link": "Lupa katasandi? <a href=\"#/member/forgot\">klik disini</a>",
@@ -4193,18 +4381,25 @@ var bmv_settings = {
     "profile": {
       "id": "Profil",
       "backup_account": "Backup Akun",
-      "backup_all": "Backup semua data",
       "export_account": "Kamu mungkin perlu mengekspor semua data akun terlebih dahulu",
       "export_all": "Unduh data akun",
       "delete_account": "Hapus Akun",
       "delete_permanent": "Hapus Permanen",
-      "verified_not": "Email belum diverifikasi. <b>Verifikasi sekarang</b>",
+      "verified_not": "Email belum diverifikasi. <b><u>Verifikasi sekarang</u></b>",
       "delete_notif": "<p class=\"m-text\"><b>Apakah Kamu yakin?</b></p><p>Akun ini dan termasuk semua data Profil, Pengaturan, Bookmark, History akan dihapus secara <b>permanen</b> dan tidak dapat dikembalikan.</p>"
     },
     "bmhs": {
       "info": "yang dapat di simpan pada akun yang digunakan saat ini maksimal"
     },
-    "notif_msg": "Jika ada masalah/kendala saat mengakses situs ini, lapor di <a href=\"#/contact\">Contact</a> atau <a href=\"https://github.com/bakomon/web/issues\" target=\"_blank\">Github</a>",
+    "notif_msg": {
+      "all": [],
+      "homepage": [
+        {
+          "type": "info",
+          "message": "Jika ada masalah/kendala saat mengakses situs ini, lapor di <a href=\"#/contact\">Contact</a> atau <a href=\"https://github.com/bakomon/web/issues\" target=\"_blank\">Github</a>"
+        }
+      ]
+    },
     "footer_msg": "Semua komik di website ini hanya preview dari komik aslinya, mungkin terdapat banyak kesalahan bahasa, nama tokoh, dan alur cerita. Beli komik aslinya jika tersedia di kotamu!"
   }
 };

@@ -247,23 +247,26 @@ function loadXMLDoc(url, callback, info) {
 function scrap_show(data) {
   window['wst_data'] = JSON.parse(data.response);
   // console.log('wst_data:', wst_data);
+  var err = 'error' in wst_data ? wst_data.error : false;
   el('.post-content').classList.remove('loading', 'loge');
   el('.result-url a').href = wst_data.url.search(/(https?:)?\/\//) == -1 ? ('//'+ wst_data.url) : wst_data.url;
   el('.result-url a').innerHTML = wst_data.url;
   el('.result-code .code strong').innerHTML = wst_data.status_code;
-  el('.result-code .bypass').innerHTML = wst_data.bypass ? ' (bypass)' : '';
+  el('.result-code .bypass').innerHTML = !err && wst_data.bypass ? ' (bypass)' : '';
   if (wst_data.status_code == 200) el('.result-code .result-bottom').classList.add('result-ok');
-  el('.result-xml textarea').value = wst_data.body;
+  el('.result-xml textarea').value = err ? ('❗❗ Error:\n\n'+ err.message +' in '+ err.file +' on line '+ err.line) : wst_data.body;
   el('.scrap-result').classList.remove('no_items');
   el('.result-xml textarea').scrollTop = 0;
 }
 
 el('.scrap-submit').addEventListener('click', function() {
-  if (el('.scrap-url').value == '') {
+  var url = el('.scrap-url').value;
+  if (url.search(/^(https?|ftp):/) == -1) url = 'http://'+ url.replace(/^\/\//, '');
+  if (url == '') {
     el('.scrap-url').focus();
     return;
   }
-  if (!isValidUrl(el('.scrap-url').value)) {
+  if (!isValidUrl(url)) {
     alert('Invalid URL');
     el('.scrap-url').select();
     return;
@@ -271,7 +274,7 @@ el('.scrap-submit').addEventListener('click', function() {
   el('.post-content').classList.add('loading', 'loge');
   el('.scrap-result').classList.add('no_items');
   el('.result-code .result-bottom').classList.remove('result-ok');
-  loadXMLDoc('./test.php?url='+ encodeURIComponent(el('.scrap-url').value), scrap_show);
+  loadXMLDoc('./test.php?url='+ encodeURIComponent(url), scrap_show);
 });
 
 el('.result-xml textarea').addEventListener('dblclick', function () {

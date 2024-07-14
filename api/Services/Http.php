@@ -2,123 +2,63 @@
 
 namespace Api\Services;
 
+require_once __DIR__ . '/hQuery.php';
+
 use \DOMDocument;
+use Api\Services\hQuery;
 
 class Http
 {
     private static $instance;
-    public static $source;
-    public static $headers;
     public static $status;
-    public static $link;
+    public static $cache;
     public static $bypass;
+    public static $bypass_url;
+    public static $link;
+    public static $headers;
+    public static $source;
+    public static $error;
 
-    public static function get(String $url, $options = [])
+    public static function load(String $url, $options = [])
     {
-        $header_list = [];
         $is_bypass = isset($options['bypass']) && $options['bypass'] == true;
+        $headers = isset($options['headers']) ? $options['headers'] : null;
+        $fields = isset($options['fields']) ? $options['fields'] : null;
 
-        $ch = curl_init();
-        // curl_setopt($ch, CURLOPT_USERAGENT, 'Chrome Privacy Preserving Prefetch Proxy');
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'GET');
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-        if (isset($options['headers'])) curl_setopt($ch, CURLOPT_HTTPHEADER, $options['headers']);
-
-        if (!$is_bypass) {
-            // this function is called for each header received https://stackoverflow.com/a/41135574
-            curl_setopt($ch, CURLOPT_HEADERFUNCTION,
-              function($curl, $header_line) use (&$header_list)
-              {
-                $len = strlen($header_line);
-                $header = explode(':', $header_line, 2);
-                if (count($header) < 2) // ignore invalid headers
-                  return $len;
-
-                $header_list[strtolower(trim($header[0]))] = trim($header[1]);
-
-                return $len;
-              }
-            );
-        }
-
-        self::$source = curl_exec($ch);
-        self::$status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-
-        if ($is_bypass && self::$status == 200 && strpos($url, 'scrapingant') !== FALSE) {
-            $response = json_decode(self::$source);
-
-            if (count($response->headers) > 0) {
-                foreach ($response->headers as $i => $header) $header_list[$header->name] = $header->value;
-            }
-
-            self::$source = $response->html;
-            self::$headers = $response->headers;
-            self::$status = $response->status_code;
+        if (isset($options['method']) && $options['method'] == 'POST') {
+            $ch = hQuery::fromUrl($url, $headers, $fields, ['method' => 'POST']);
         } else {
-            self::$headers = $header_list;
+            $ch = hQuery::fromUrl($url, $headers);
         }
+
+        self::$status = $ch->code;
         self::$bypass = $is_bypass;
-        self::$link = curl_getinfo($ch, CURLINFO_EFFECTIVE_URL);
+        if ($is_bypass) self::$bypass_url = $url;
+        self::$link = $is_bypass ? $options['source_url'] : $url;
 
-        curl_close($ch);
-
-        if (is_null(self::$instance)) {
-            self::$instance = new self();
-        }
-        return self::$instance;
-    }
-
-    public static function post(String $url, $options = [])
-    {
-        $header_list = [];
-        $is_bypass = isset($options['bypass']) && $options['bypass'] == true;
-
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        if (isset($options['fields'])) curl_setopt($ch, CURLOPT_POSTFIELDS, $options['fields']);
-        if (isset($options['headers'])) curl_setopt($ch, CURLOPT_HTTPHEADER, $options['headers']);
-
-        if (!$is_bypass) {
-            // this function is called for each header received https://stackoverflow.com/a/41135574
-            curl_setopt($ch, CURLOPT_HEADERFUNCTION,
-              function($curl, $header_line) use (&$header_list)
-              {
-                $len = strlen($header_line);
-                $header = explode(':', $header_line, 2);
-                if (count($header) < 2) // ignore invalid headers
-                  return $len;
-
-                $header_list[strtolower(trim($header[0]))] = trim($header[1]);
-
-                return $len;
-              }
-            );
-        }
-
-        self::$source = curl_exec($ch);
-        self::$status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-
-        if ($is_bypass && self::$status == 200 && strpos($url, 'scrapingant') !== FALSE) {
-            $response = json_decode(self::$source);
-
-            if (count($response->headers) > 0) {
-                foreach ($response->headers as $i => $header) $header_list[$header->name] = $header->value;
-            }
-
-            self::$source = $response->html;
-            self::$headers = $response->headers;
-            self::$status = $response->status_code;
+        if (isset($ch->error)) {
+            self::$error = [
+                'message' => $ch->error->getMessage(),
+                'line' => $ch->error->getLine(),
+                'file' => $ch->error->getFile(),
+            ];
         } else {
-            self::$headers = $header_list;
-        }
-        self::$bypass = $is_bypass;
-        self::$link = curl_getinfo($ch, CURLINFO_EFFECTIVE_URL);
+            if ($is_bypass && self::$status == 200 && strpos($url, 'scrapingant') !== FALSE) {
+                $response = json_decode($ch->body);
 
-        curl_close($ch);
+                if (count($response->headers) > 0) {
+                    foreach ($response->headers as $i => $header) $header_list[strtoupper($header->name)] = $header->value;
+                }
+
+                self::$status = $response->status_code;
+                self::$headers = $response->headers;
+                self::$source = $response->html;
+            } else {
+                self::$headers = $ch->headers;
+                self::$source = preg_match("//u", $ch->body) ? $ch->body : mb_convert_encoding($ch->body, 'UTF-8', mb_list_encodings()); //https://php.watch/versions/8.2/utf8_encode-utf8_decode-deprecated#utf8_encode-any-mbstring
+            }
+            self::$cache = $ch->cache;
+        }
 
         if (is_null(self::$instance)) {
             self::$instance = new self();
@@ -133,7 +73,7 @@ class Http
 
     public static function responseString()
     {
-        return htmlspecialchars(self::$source);
+        return htmlspecialchars(self::$source, ENT_QUOTES);
     }
 
     public static function responseParse()
@@ -158,7 +98,13 @@ class Http
 
     public static function isBlocked()
     {
-        return self::$status == 403 && preg_match('/cloudflare|uvicorn/i', self::$headers['server']);
+        return self::$status == 403 && preg_match('/cloudflare|uvicorn/i', self::$headers['SERVER']);
+    }
+
+    public static function isDomainChanged($dom)
+    {
+        $url = $dom->query("//link[@rel='canonical' or contains(@href, '/feed')]")[0]->getAttribute('href');
+        return parse_url(self::$link, PHP_URL_HOST) != parse_url($url, PHP_URL_HOST);
     }
 
     public static function bypass(String $url, $post = null)
@@ -171,22 +117,30 @@ class Http
                 'params' => '&browser=false&proxy_country=ID',
             ],
             "webscraping" => [
-                'api' => 'YOUR_WEBSCRAPINGAI_APIKEY',
+               'api' => 'YOUR_WEBSCRAPINGAI_APIKEY',
                 'url' => 'https://api.webscraping.ai/html?api_key={apikey}&url=',
                 'params' => '&js=false',
             ],
             "zenscrape" => [
-                'api' => 'YOUR_ZENSCRAPE_APIKEY',
+               'api' => 'YOUR_ZENSCRAPE_APIKEY',
                 'url' => 'https://app.zenscrape.com/api/v1/get?apikey={apikey}&url=',
                 'params' => '',
             ]
         ];
 
-        $full_url = str_replace('{apikey}', $lists[$source]['api'], $lists[$source]['url']) . urlencode($url) . $lists[$source]['params'];
-        return $post ? self::post($full_url, ['bypass' => true]) : self::get($full_url, ['bypass' => true]);
+        if (empty($lists[$source]['api'])) {
+            $options = [];
+            if ($post) $options['method'] = 'POST';
+            return self::load($url, $options);
+        } else {
+            $full_url = str_replace('{apikey}', $lists[$source]['api'], $lists[$source]['url']) . urlencode($url) . $lists[$source]['params'];
+            $options = ['bypass' => true, 'source_url' => $url];
+            if ($post) $options['method'] = 'POST';
+            return self::load($full_url, $options);
+        }
     }
 
-    public static function showError()
+    public static function showError($message = null)
     {
         $error_message = 'Terjadi kesalahan';
 
@@ -198,27 +152,29 @@ class Http
             $error_message = 'Page Not Found';
         } else if (self::$status >= 400) {
             $error_message = 'Client Error';
+        } else if ($message) {
+            $error_message = $message;
         }
 
         $error =  [
-            'status' => strtoupper(str_replace(' ', '_', $error_message)),
+            'status' => strtoupper(str_replace(' ', '_', preg_replace('/[^\sA-Za-z0-9]/', '', $error_message))),
             'status_code' => self::$status,
-            'message' => self::$bypass && strpos(self::$link, 'scrapingant') !== FALSE ? json_decode(self::$source)->detail : $error_message,
+            'message' => $error_message,
             'bypass' => self::$bypass,
             'source' => self::$link,
         ];
 
         if (self::$bypass) {
-            $query_str = parse_url($error['source'], PHP_URL_QUERY);
-            parse_str($query_str, $query);
-            $error['source'] = urldecode($query['url']);
-            $error['bypass_url'] = self::$link;
+            if (strpos(self::$bypass_url, 'scrapingant') !== FALSE) $error['message'] = json_decode(self::$source)->detail;
+            $error['bypass_url'] = self::$bypass_url;
         }
 
-        if (self::$status != 404) {
+        if (self::$status != 404 && self::$error == NULL) {
             $error['headers'] = self::$headers;
             $error['response'] = self::$source;
         }
+
+        if (self::$error) $error['response'] = self::$error['message'] . ' in ' . self::$error['file'] . ' on line ' . self::$error['line'];
 
         return $error;
     }

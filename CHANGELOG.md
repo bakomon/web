@@ -158,3 +158,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 - `manhwaindo.org` (eastheme)
+
+
+## [1.5] - 2024-02-14
+
+### Fixed
+
+- api: CORS (Cross-Origin Resource Sharing)
+- api: `cover` image empty (kiryuu)
+- api: advanced search
+- api: series element selector for `author` komikcast
+- load `http` image from [reSmush.it](https://resmush.it/) with [wsrv.nl](https://github.com/weserv/images) (mixed content warning)
+- chapter: next/prev different slug
+- series: bookmark same title
+- numerous bug fixes and improvements.
+
+### Added
+
+- &lt;img&gt; `referrerpolicy` attribute
+- api: image `attr_alt`
+- new source `klikmanga.com` (madara)
+- new source `leviatanscans.com` (madara)
+- new source `reaper-scans.com` (themesia)
+- check password security with [Have I Been Pwned? (HIBP)](https://haveibeenpwned.com/API/v3#PwnedPasswords)
+- firebase: remove user data from [storage](https://firebase.google.com/docs/storage/web/start#web-namespaced-api), if user account deleted
+- lazyload: load an image with a specific [referer](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Referer)
+- api: detect source domain name changed
+- add `timeout` property to `loadXMLDoc`
+- show history url based on source site
+
+### Changed
+
+- api: web scraper with [hQuery.php](https://github.com/duzun/hQuery.php)
+- firebase `8.10.0` to [`8.10.1`](https://firebase.google.com/support/release-notes/js#version_8101_-_january_28_2022)
+- firebase storage [security rules `read` and `write`](https://firebase.google.com/docs/rules/rules-and-auth#:~:text=users%20can%20only%20read%20and%20write%20their%20own%20data)
+- `bacakomik.me` to `bacakomik.net`
+- `komikcast.io` to `komikcast.lol`
+- `shinigami.sh` to `shinigami.moe`
+- `pojokmanga.net` to `pojokmanga.id`
+
+### Removed
+
+- `neumanga.net` (koidezign)
