@@ -76,7 +76,12 @@ class hQuery
             ksort($opt);
             $t = realpath($dir) and $dir = $t or mkdir($dir, 0766, true);
             $dir .= DIRECTORY_SEPARATOR;
-            $cch_id = hash('sha1', $url, true);
+            if (preg_match("/\/linewebtoon/i", $url)) { /* custom */
+                $new_url = preg_replace('/([&?](msgpad|md)=[^&]*)/', '', $url);
+                $cch_id = hash('sha1', $new_url, true);
+            } else {
+                $cch_id = hash('sha1', $url, true);
+            }
             $t      = hash('md5', self::jsonize($opt), true);
             $cch_id = bin2hex(substr($cch_id, 0, -strlen($t)) . (substr($cch_id, -strlen($t)) ^ $t));
             $cch_fn = $dir . $cch_id;
@@ -384,7 +389,7 @@ class hQuery
         if (file_exists($fn) and $fm = filemtime($fn) and (!$expire || $fm + $expire > time())) {
             $cnt = self::flock_get_contents($fn);
         }
-        $t = strlen($cnt);
+        $t = strlen((string) $cnt);
         if (!empty($cnt)) {
             if ($gz = !strncmp($cnt, "\x1F\x8B", 2)) {
                 $cnt = self::gzdecode($cnt);
@@ -690,7 +695,7 @@ class hQuery
             list($host, $port) = $p;
         }
 
-        if (strncmp($path, '/', 1)) {
+        if (strncmp((string) $path, '/', 1)) {
             $path = '/' . $path;
         }
         // isset($path) or $path = '/';

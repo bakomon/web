@@ -49,7 +49,7 @@ class Route
         endif;
     }
 
-    public function get($info = null, $callback, $target)
+    public function get($info, $callback, $target)
     {
         $day = 86400; //24 hours in seconds
         $path = __DIR__ . '/../../.cache/';

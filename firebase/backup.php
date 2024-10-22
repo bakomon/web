@@ -1,5 +1,5 @@
 <?php
-// Source: https://github.com/front/firebase-backup/blob/master/php/index.php
+// Source: https://github.com/front/firebase-backup/blob/15429344f333d1fc1b6bb0cbf355a9ed18ba8118/php/index.php
 
 require_once '../api/Allowed.php';
 

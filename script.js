@@ -1,6 +1,6 @@
 // Generate random number between two numbers https://stackoverflow.com/a/7228322
 function getRndInteger(min, max) { // min and max included
-  return Math.floor(Math.random() * (max - min + 1) + min)
+  return Math.floor(Math.random() * (max - min + 1) + min);
 }
 
 // https://developer.mozilla.org/en-US/docs/Web/API/Window/beforeunload_event#examples
@@ -9,29 +9,27 @@ function beforeUnloadListener(event) {
   return event.returnValue = '';
 }
 
+// modify object and not the original https://stackoverflow.com/a/29050089
+function copyObject(data) {
+  var obj = Array.isArray(data) ? [] : {};
+  return Object.assign(obj, data);
+}
+
 // Check if string is number https://stackoverflow.com/a/175787
 function isNumeric(data) {
   if (typeof data == 'number') return true;
   return !isNaN(data) && !isNaN(parseFloat(data));
 }
 
-// Check if browser is Chromium-based https://stackoverflow.com/a/62797156
-function isChromium() {
-  return !!window.chrome || !!navigator.userAgentData && navigator.userAgentData.brands.some(data => data.brand == 'Chromium');
+// Uppercase first character or letter
+function firstUCase(str, letter) {
+  if (str.length == 0) return str;
+  if (letter) {
+    return str.replace(/\b\w/g, function(char) { return char.toUpperCase(); });
+  } else {
+    return str.charAt(0).toUpperCase() + str.slice(1);
+  }
 }
-
-// Toggle multiple classes
-function toggleClass(elem, array) {
-  // example: toggleClass(document.body, ['mobile', 'no_js']);
-  array.forEach(function(item){ elem.classList.toggle(item); });
-}
-
-// Uppercase first character
-function firstUCase(str) {
-  var text = str.replace(str.substring(1, 0), str.substring(1, 0).toUpperCase());
-  return text;
-}
-
 
 // Check if an image is loaded (no errors) https://stackoverflow.com/a/1977898
 function isImageLoaded(img) {
@@ -40,10 +38,57 @@ function isImageLoaded(img) {
   return true;
 }
 
+// Check if browser is Chromium-based https://stackoverflow.com/a/62797156
+function isChromium() {
+  return !!window.chrome || !!navigator.userAgentData && navigator.userAgentData.brands.some(data => data.brand == 'Chromium');
+}
+
+// Toggle multiple classes
+function toggleMtClass(elem, array) {
+  // example: toggleMtClass(document.body, ['mobile', 'no_js']);
+  for (var i in array) elem.classList.toggle(array[i]);
+}
+
+// Add and remove class with if/else statement
+function toggleClass(elem, cls, cond) {
+  // example: toggleClass(document.body, 'no_js', true);
+  elem.classList[cond ? 'add' : 'remove'](cls);
+}
+
+// Add or remove from array
 function modArray(note, array, str) {
   if (note == 'add') array.push(str);
   if (note == 'remove') return array.filter(function(item) { return item !== str });
   return array;
+}
+
+// Check if data from localStorage is an array
+function localArray(data) {
+  if (!data) return false;
+  try {
+    const parsedData = JSON.parse(data);
+    return parsedData;
+  } catch (err) {
+    return false;
+  }
+}
+
+function shuffleArray(array) {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+  return array;
+}
+
+function urls(str) {
+  try {
+    var url = str || window.location;
+    return new URL(url);
+  } catch (error) {
+    console.error('!! Error: Invalid URL, url: '+ str);
+    return false;
+  }
 }
 
 // Escape
@@ -110,14 +155,6 @@ function genJSON(array, param) {
   return json;
 }
 
-// Local Storage
-function local(prop, name, val) {
-  var methods = prop == 'get' ? 'getItem' : prop == 'set' ? 'setItem' : prop == 'remove' ? 'removeItem' : 'clear';
-  if (prop == 'set') return localStorage[methods](name, val);
-  if (prop == 'get' || prop == 'remove') return localStorage[methods](name);
-  if (prop == 'clear') return localStorage[methods]();
-}
-
 // Sorting JSON by values https://stackoverflow.com/a/9188211
 function sortBy(array, prop, asc) {
   return array.sort(function(a, b) {
@@ -127,6 +164,14 @@ function sortBy(array, prop, asc) {
       return (b[prop] > a[prop]) ? 1 : ((b[prop] < a[prop]) ? -1 : 0);
     }
   });
+}
+
+// Local Storage
+function local(prop, name, val) {
+  var methods = prop == 'get' ? 'getItem' : prop == 'set' ? 'setItem' : prop == 'remove' ? 'removeItem' : 'clear';
+  if (prop == 'set') return localStorage[methods](name, val);
+  if (prop == 'get' || prop == 'remove') return localStorage[methods](name);
+  if (prop == 'clear') return localStorage[methods]();
 }
 
 // Date toLocaleString() with local format, ref: https://www.w3schools.com/jsref/jsref_tolocalestring.asp
@@ -143,10 +188,10 @@ function dateLocal(date) {
 
 function keyEvent(event, code) {
   // Based on the US standard 101 keyboard https://www.toptal.com/developers/keycode/table
-  var list = {"Enter":13,"Shift":16,"Control":17,"Alt":18,"ArrowLeft":37,"ArrowUp":38,"ArrowRight":39,"ArrowDown":40,"a":65,"c":67,"i":73,"j":74,"r":82,"s":83,"u":85,"v":86,"x":88,"F12":123};
+  var list = {"Enter":13,"Shift":16,"Control":17,"Alt":18,"ArrowLeft":37,"ArrowUp":38,"ArrowRight":39,"ArrowDown":40,"KeyA":65,"KeyC":67,"KeyI":73,"KeyJ":74,"KeyR":82,"KeyS":83,"KeyU":85,"KeyV":86,"KeyX":88,"F12":123};
 
   var key, prop = '';
-  if (event.code) {
+  if (event.code && event.key) {
     prop = event.code in list ? event.code : event.key;
     key = list[prop];
   } else {
@@ -239,9 +284,9 @@ function copyToClipboard(text, elem) {
   try {
     var successful = document.execCommand('copy');
     msg = successful ? true : false;
-  } catch (err) {
+  } catch (error) {
     msg = false;
-    console.log('Oops, unable to copy ', err);
+    console.log('Oops, unable to copy ', error);
   }
 
   elm.removeChild(copyTextarea);
@@ -308,7 +353,7 @@ var cookies = {
     var expires = '';
     if (interval) {
       var date = new Date();
-      var timer = interval.indexOf('|') != -1 ? Number(interval.split('|')[1]) : 1;
+      var timer = interval.includes('|') ? Number(interval.split('|')[1]) : 1;
 
       if (interval.search(/(year|month)s?/i) != -1) {
         var year_add = interval.search(/years?/i) != -1 ? timer : 0;
@@ -325,11 +370,11 @@ var cookies = {
   },
   get: function(name) {
     // https://www.quirksmode.org/js/cookies.html
-    var nameEQ = name + '=';
+    var nameEQ = name +'=';
     var ca = document.cookie.split(';');
     for (var i = 0; i < ca.length; i++) {
       var c = ca[i];
-      while (c.charAt(0)==' ') c = c.substring(1, c.length);
+      while (c.charAt(0) == ' ') c = c.substring(1, c.length);
       if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length, c.length);
     }
     return null;
@@ -356,26 +401,17 @@ function bmf_filterBy(note, array, param) {
 
 function bmf_get_id(title) {
   var titleId = title.replace(/&#{0,1}[a-z0-9]+;/gi, '').replace(/\([^\)]+\)/g, '');
-  // titleId = titleId.replace(/\s((bahasa|sub(title)?)\s)?indo(nesiaa?)?/i, '').replace(/(baca|read|download)\s/i, '').replace(/\s?(man(ga|hwa|hua)|[kc]omi[kc]s?|series|novel|anime)\s?/i, '\x20');
+  // titleId = titleId.replace(/\s((bahasa?|sub(title)?)\s)?(\bindo\b|indonesiaa?)/i, '').replace(/(baca|read|download)\s/i, '').replace(/\s?(man(ga|hwa|hua)|[kc]omi[kc]s?|series|novel|anime)\s?/i, '\x20');
   titleId = titleId.replace(/(\.|\t)+/g, '\x20').replace(/\s+/g, '\x20').replace(/[^\s\w\-]/g, '').replace(/\s+$/g, '').replace(/\s+/g, '-').toLowerCase();
   return titleId;
 }
 
-// Get URL Variables https://codepen.io/sekedus/pen/jOpNmja
 function bmf_getParam(param, url) {
+  if (!urls(url)) return false;
+
   var result = [];
-  var loc = url ? new URL(url) : window.location;
-  var query = loc.search.substring(1).split('&');
-  for (var i = 0; i < query.length; i++) {
-    var pair = query[i].split('=');
-    if (pair[0] == param) {
-      if (pair.length == 1) {
-        return true;
-      } else {
-        result.push(decodeURIComponent(pair[1].replace(/\+/g, ' ')));
-      }
-    }
-  }
+  var params = urls(url).searchParams;
+  if (params.has(param)) result = params.getAll(param);
   return result.length == 0 ? false : result;
 }
 
@@ -393,7 +429,7 @@ function bmf_connectionNotif(e) {
 
     c_el.addEventListener('click', function() {
       if (bmv_connection != 'online') {
-        toggleClass(this, ['red', 'bgrey', 'hide', 'pulse']);
+        toggleMtClass(this, ['red', 'bgrey', 'hide', 'pulse']);
         if (this.classList.contains('hide')) {
           this.setAttribute('title', this.innerHTML);
           this.innerHTML = '<svg data-name="mdi/globe-remove" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="currentColor" d="m14.46 15.88l1.42-1.42L18 16.59l2.12-2.12l1.42 1.41L19.41 18l2.13 2.12l-1.42 1.42L18 19.41l-2.12 2.13l-1.42-1.42L16.59 18l-2.12-2.12M20 12c0-3.36-2.07-6.23-5-7.41V5c0 1.1-.9 2-2 2h-2v2c0 .55-.45 1-1 1H8v2h6c.5 0 .9.35 1 .81c-1.8 1.04-3 2.98-3 5.19c0 1.5.54 2.85 1.44 3.9L12 22C6.5 22 2 17.5 2 12S6.5 2 12 2s10 4.5 10 10l-.1 1.44c-.56-.48-1.2-.85-1.9-1.1V12m-9 7.93V18c-1.1 0-2-.9-2-2v-1l-4.79-4.79C4.08 10.78 4 11.38 4 12c0 4.08 3.06 7.44 7 7.93Z"/></svg>';
@@ -428,7 +464,7 @@ function bmf_loadXMLDoc(info, url, callback) {
           response = resHTML.parseFromString(response, 'text/html');
         }
       } else {
-        var err_msg = '❗❗ ERROR: bmf_loadXMLDoc';
+        var err_msg = '❗ ERROR: bmf_loadXMLDoc';
         if ('timeout' in info) err_msg += ` timed out (${info.timeout}).`;
         err_msg += ' status = '+ this.status +', url = '+ url;
         console.error(err_msg);
@@ -460,8 +496,8 @@ function bmf_lazyLoad(elem, note) {
 
   function lazyReset() {
     bmv_chk_lazy = false;
-    bmv_lazy_error = false;
-    bmv_lazy_skip = false;
+    bmv_lz_error = false;
+    bmv_lz_skip = false;
   }
 
   function lazyNext() {
@@ -474,25 +510,28 @@ function bmf_lazyLoad(elem, note) {
       callback(url);
       return;
     }
-    if (is_mobile && bmv_dt_settings.img_resize) {
+    var img_api = bmv_config.resize || `${api_path}/tools`;
+    if (is_mobile && bmv_dt_st.img_resize) {
       var lz_width = bmv_current == 'chapter' ? window.screen.width : (window.screen.width / 2);
-      var lz_params = '?quality='+ bmv_dt_settings.resize_quality;
+      var lz_params = '?quality='+ bmv_dt_st.resize_quality;
       if (bmv_current == 'chapter') lz_params += '&index='+ elem.dataset.index;
       lz_params += '&width='+ (lz_width + 50);
-      lz_params += '&ref='+ encodeURIComponent(bmv_lazy_referer);
-      lz_params += '&name='+ bmv_dt_settings.source.site +'_'+ bmf_get_id(elem.title);
+      lz_params += '&ref='+ encodeURIComponent(bmv_lz_referer || urls(url).origin);
+      lz_params += '&name='+ bmv_dt_st.source.site +'_'+ bmf_get_id(elem.title);
       lz_params += '&imageUrl='+ encodeURIComponent(url);
 
-      bmf_loadXMLDoc({note:`xhr/${bmv_current}/lazyload`, timeout:30000}, `${api_path}/tools/image-resize/${lz_params}`, function(n, res) {
+      bmf_loadXMLDoc({note:`xhr/${bmv_current}/lazyload`, timeout:30000}, `${img_api}/imgpa.php${lz_params}`, function(n, res) {
+      // bmf_loadXMLDoc({note:`xhr/${bmv_current}/lazyload`, timeout:30000}, `${img_api}/image-resize/${lz_params}`, function(n, res) { //old
         if (res.code == 200 && res.response != '') {
           try {
             var img_data = JSON.parse(res.response);
             if (img_data.status == 'success') {
               url = img_data.img_url;
+              if (img_data['blocked']) url = `${img_api}/img_ref.php?ref=${encodeURIComponent(bmv_lz_referer || urls(url).origin)}&url=`+ encodeURIComponent(url);
             } else {
               throw new Error(img_data.error_message);
             }
-          } catch(e) {
+          } catch (e) {
             console.error(`!! Error: ${e}, ${url}`);
           }
         }
@@ -501,7 +540,7 @@ function bmf_lazyLoad(elem, note) {
       });
     } else {
       if (elem.dataset.ref == 'true') {
-        url = `${api_path}/tools/img_ref.php?ref=${encodeURIComponent(bmv_lazy_referer)}&url=`+ encodeURIComponent(url);
+        url = `${img_api}/img_ref.php?ref=${encodeURIComponent(bmv_lz_referer || urls(url).origin)}&url=`+ encodeURIComponent(url);
         if (bmv_current == 'chapter' && elem.parentElement.tagName == 'A') elem.parentElement.href = url;
       }
       callback(url);
@@ -514,6 +553,7 @@ function bmf_lazyLoad(elem, note) {
     var lz_elem = single ? single.elem : bmv_dt_lazy[0].elem;
     var lz_img = new Image();
     var lz_2nd = 'la2yloading';
+    lz_img.setAttribute('referrerpolicy', 'no-referrer');
 
     var lz_wait;
     if (bmv_current == 'chapter') {
@@ -536,10 +576,10 @@ function bmf_lazyLoad(elem, note) {
 
     var imgs = single ? single.img : bmv_dt_lazy[0].img;
     lz_elem.className = lz_elem.className.replace('lazy1oad', lz_2nd);
-    lz_img.onerror = function() { bmv_lazy_error = true; };
+    lz_img.onerror = function() { bmv_lz_error = true; };
     bmv_chk_lazy = true;
 
-    if (!single && isImageLoaded(lz_elem) && lz_elem.classList.contains('lazyload3d')) {
+    if (!urls(imgs) || !single && isImageLoaded(lz_elem) && lz_elem.classList.contains('lazyload3d')) {
       if (bmv_current == 'chapter') {
         clearInterval(lz_wait);
         lz_elem.style.removeProperty('min-height');
@@ -551,15 +591,15 @@ function bmf_lazyLoad(elem, note) {
         lz_img.src = url;
 
         var skip_time = bmv_current == 'chapter' && lz_elem.dataset.ref == 'false' && !is_mobile ? 60000 : 5000;
-        var skip_img = setTimeout(function() { bmv_lazy_skip = true; }, skip_time);
+        var skip_img = setTimeout(function() { bmv_lz_skip = true; }, skip_time);
 
         var wait_img = setInterval(function() {
-          if (isImageLoaded(lz_img) || bmv_lazy_error || bmv_lazy_skip) {
+          if (isImageLoaded(lz_img) || bmv_lz_error || bmv_lz_skip) {
             clearInterval(wait_img);
             clearTimeout(skip_img);
 
             // repeat, if error
-            if (bmv_lazy_error && url != '' && (lz_img.src.match(bmv_rgx_cdn) || lz_elem.dataset.ref == 'false')) {
+            if (bmv_lz_error && url != '' && (lz_img.src.match(bmv_rgx_cdn) || lz_elem.dataset.ref == 'false')) {
               lazyReset();
               if (lz_img.src.match(bmv_rgx_cdn)) { //cdn is true
                 var err_url = lz_img.src.replace(bmv_rgx_cdn, '');
@@ -578,11 +618,11 @@ function bmf_lazyLoad(elem, note) {
             } else {
               lz_elem.className = lz_elem.className.replace('la2yloading', 'lazyload3d');
               lz_elem.classList.remove('loading', 'loge');
-              lz_elem.classList[bmv_lazy_error ? 'add' : 'remove']('no-image');
+              toggleClass(lz_elem, 'no-image', bmv_lz_error);
               lz_elem.style.removeProperty('min-height');
 
               if (bmv_current == 'chapter') {
-                if (bmv_lazy_error) clearInterval(lz_wait);
+                if (bmv_lz_error) clearInterval(lz_wait);
               } else {
                 lz_elem.src = lz_img.src;
                 // lz_elem.removeAttribute('data-src');
@@ -640,7 +680,7 @@ function bmf_lazyLoad(elem, note) {
           var sNum = el('.cm_size').innerHTML;
           img = img.replace(/\/([swh]\d+)(?:-[\w]+[^\/]*)?\//, '/'+ sNum +'/');
           img = img.replace(/=[swh](\d+).*/, '='+ sNum);
-          if (img.indexOf('docs.google') != -1) img = 'https://lh3.googleusercontent.com/d/'+ img.match(/.*id=([^&]+)/)[1] +'='+ sNum;
+          if (img.includes('docs.google')) img = 'https://lh3.googleusercontent.com/d/'+ img.match(/.*id=([^&]+)/)[1] +'='+ sNum;
         }
       }
 
@@ -685,13 +725,13 @@ function bmf_meta_tags(note, data) {
 
   if (bmv_current == 'series') {
     mt_img = data.cover.replace(/\?.*/, '');
-    mt_desc = data.desc.length > 87 ? data.desc.substring(0, 87) + '...' : data.desc;
+    mt_desc = data.desc.length > 87 ? data.desc.substring(0, 87) +'...' : data.desc;
   }
 
   if (bmv_current == 'chapter') {
-    if (fbase_user && fbase_user['\x74\x69\x65\x72'] == '\x70\x72\x6f') mt_title = `[${data.current.replace(/[-\s]((bahasa?[-\s])?indo(nesiaa?)?|full)/, '')}] `+ mt_title;
+    if (fbase_user && fbase_user['\x74\x69\x65\x72'] == '\x70\x72\x6f') mt_title = `[${data.current.replace(/[-\s]((bahasa?[-\s])?(\bindo\b|indonesiaa?)|full)/, '')}] `+ mt_title;
     d_desc = mt_desc = 'Baca download komik '+ data.title +' volume batch bahasa indonesia pdf rar zip terlengkap.';
-    d_key = d_key + ', '+ data.title +' Chapter '+ data.current;
+    d_key = d_key +', '+ data.title +' Chapter '+ data.current;
   }
 
   document.title = bmv_current == 'latest' ? 'Bakomon'+ mt_page +' \u2013 Baca Komik, Manga, Manhwa, Manhua Bahasa Indonesia Online' : mt_title;
@@ -720,10 +760,10 @@ function bmf_member_notif(info, opt) {
   }
 
   var m_info = info.replace(/.*\//, '');
-  var m_msg = m_info.replace(/\-/g, ' ');
+  var m_msg = m_info.replace(/\-/g, '\x20');
   if (opt && 'message' in opt) m_msg = opt.message;
 
-  if (info.indexOf('error') != -1) {
+  if (info.includes('error')) {
     if (m_info == 'wrong-password') {
       m_msg = 'Katasandi yang Kamu masukkan salah.';
       if (!fbase_login) m_msg += ' <a href="#/member/forgot">Lupa katasandi?</a>';
@@ -815,6 +855,7 @@ function bmf_bmhs_key(e) {
 }
 
 function bmf_bmhs_change(info, total) {
+  // update bmhs total data in firebase "check"
   var m_info = info.split('|');
   var m_path = bmf_fbase_path(`check/${m_info[0]}`);
   bmf_fbase_db_get(`series/${m_info[0]}/${m_info[1]}`, m_path, function(res) {
@@ -836,123 +877,175 @@ function bmf_bmhs_length(note) {
       var new_data = genArray(bmv_dt_bmhs); //convert to Array
       new_data = sortBy(new_data, m_sort); //sot by "m_sort" (desc)
       new_data = firstArray(new_data, bmv_max_bmhs, 'last'); //get last after {bmv_max_bmhs} data
-
-      for (var i in new_data) {
-        bmf_bmhs_remove(`series/${new_data[i].slug}`);
-      }
+      for (var i in new_data) bmf_bmhs_remove(`series/${new_data[i].slug}`);
     }
   });
 }
 
 function bmf_bmhs_remove_split(data) {
   if (bmv_prm_slug == 'bookmark') {
+    // if there is a history list, bookmark = false
     if ('hs_visited' in data) {
       data.bookmarked = 'false';
       return data;
     }
   } else { //history
+    // if bookmarked, history list = empty
     if ('bookmarked' in data && data.bookmarked == 'true') {
       data.history = 'false';
       data.hs_visited = {};
       return data;
     }
   }
+  // not bookmarked & no history list, return = empty (removed)
   return {};
 }
 
-function bmf_bmhs_remove(note) {
-  if (note.indexOf('reset') != -1) {
-    bmv_dt_delete = [];
-    if (note.indexOf('toggle') == -1) {
-      el('.m-delete-btn').classList.remove('sh-close');
-      el('.m-delete-all').classList.add('no_items');
-      el('.nav-delete').classList.add('no_items');
+function bmf_bmhs_remove(note, dp) {
+  // dp = duplicate
+  var m_note = `member/${bmv_prm_slug}/${note}`;
+  var m_path = bmf_fbase_path(note);
+
+  bmf_fbase_db_get(m_note, m_path, function(res) {
+    var series = res.val();
+    var new_series = {};
+
+    if (note == 'series') { //remove all
+      for (var i in series) new_series[series[i].slug] = bmf_bmhs_remove_split(series[i]);
+      bmv_dt_bmhs = null;
+    } else {
+      new_series = !dp ? bmf_bmhs_remove_split(series) : {"slug": series.slug,"duplicate": true,"duplicate_id": dp};
+      delete bmv_dt_bmhs[series.slug];
     }
-    el('.m-select-all input').checked = false;
-  } else {
-    var m_note = `member/${bmv_prm_slug}/${note}`;
-    var m_path = bmf_fbase_path(note);
 
-    bmf_fbase_db_get(m_note, m_path, function(res) {
-      var series = res.val();
-      var new_series = {};
+    bmf_fbase_db_change(m_note, m_path, 'set', new_series, function() {
+      var m_length = genArray(bmv_dt_bmhs).length;
+      bmf_bmhs_change(`${bmv_prm_slug}|remove`, m_length);
+      el('.member .m-total').innerHTML = m_length +'/'+ bmv_max_bmhs;
 
-      if (note == 'series') { //all
-        for (var i in series) {
-          new_series[series[i].slug] = bmf_bmhs_remove_split(series[i]);
-        }
-        bmv_dt_bmhs = null;
-      } else {
-        new_series = bmf_bmhs_remove_split(series);
-        delete bmv_dt_bmhs[series.slug];
+      if (m_length > 0) {
+        bmf_member_bmhs_data(`${bmv_prm_slug}/delete`); //re-generate bmhs data
+        bmf_bmhs_reset('remove');
+        if (dp && bmv_dt_delete == 0) el('.member .post-content').classList.remove('loading', 'loge');
+      } else { //empty
+        el('.member .m-total').classList.add('no_items');
+        el('.member .m-action').classList.add('no_items');
+        el('.member .m-nav').classList.add('no_items');
+        el('.member .m-list').classList.remove('loading', 'loge');
+        el('.member .m-list').innerHTML = `<div class="flex f_middle f_center full" style="min-height:230px;">${firstUCase(bmv_prm_slug)} Kosong</div>`;
+        el('.member .m-pagination').classList.add('no_items');
       }
-
-      bmf_fbase_db_change(m_note, m_path, 'set', new_series, function() {
-        var m_length = genArray(bmv_dt_bmhs).length;
-        bmf_bmhs_change(`${bmv_prm_slug}|remove`, m_length);
-        el('.member .m-total').innerHTML = m_length +'/'+ bmv_max_bmhs;
-
-        if (m_length > 0) {
-          if (bmv_dt_delete.length == 1) {
-            removeElem(el(`.member .m-list li[data-slug="${series.slug}"]`));
-            bmv_dt_delete = [];
-          } else {
-            bmf_bmhs_remove('reset');
-            bmf_member_bmhs_data(`${bmv_prm_slug}/delete-all`);
-          }
-        } else { //empty
-          el('.member .m-total').classList.add('no_items');
-          el('.member .m-delete').classList.add('no_items');
-          el('.member .m-nav').classList.add('no_items');
-          el('.member .m-list').classList.remove('loading', 'loge');
-          el('.member .m-list').innerHTML = `<div class="flex f_middle f_center full" style="min-height:230px;">${firstUCase(bmv_prm_slug)} Kosong</div>`;
-          el('.member .m-pagination').classList.add('no_items');
-        }
-      });
     });
+  });
+}
+
+function bmf_bmhs_reset(note) {
+  bmv_dt_delete = [];
+  if (!note) {
+    var ma_active = el('.m-action .act-active');
+    if (ma_active) {
+      ma_active.classList.remove('act-active');
+      if (ma_active.hasAttribute('data-act-pos')) el('.m-act-body').classList.remove(ma_active.dataset.actPos);
+    }
+    el('.m-act-body').classList.add('no_items');
+    el('.act-delete').classList.add('no_items');
+    if (bmv_prm_slug == 'bookmark') el('.act-duplicate').classList.add('no_items');
+    el('.nav-delete').classList.add('no_items');
   }
+  if (bmv_prm_slug == 'bookmark') {
+    el('.act-duplicate input').value = '';
+    el('.act-duplicate textarea').value = '';
+    var m_list = el('.m-list .highlighted .duplicate input', 'all');
+    if (m_list.length > 0) {
+      m_list.forEach(function(item) {
+        item.checked = false;
+        triggerEvent('change', item);
+      });
+    }
+  }
+  el('.m-delete-select').classList.remove('pulse');
+  el('.m-select-all input').checked = false;
 }
 
 function bmf_bmhs_fnc(note) {
   if (note == 'first') {
-    el('.post-header h1 span').classList.add('m-total', 'btn');
-    if (is_mobile) el('.member .m-delete').classList.add('m-space-v', 'full');
-    el('.member .m-delete').classList.remove('no_items');
+    el('.post-header h1 span').classList.add('m-total', 'btn', 'cs_default');
+    if (is_mobile) el('.member .m-action').classList.add('m-space-v', 'full');
+    el('.member .m-action').classList.remove('no_items');
     el('.member .m-nav').classList.remove('no_items');
 
-    el('.member .m-delete-btn').addEventListener('click', function() {
-      bmf_bmhs_remove('reset/toggle');
-      this.classList.toggle('sh-close');
-      el('.m-delete-all').classList.toggle('no_items');
-      el('.nav-delete').classList.toggle('no_items');
-      el('.member .m-list .delete', 'all').forEach(function(item) {
-        item.classList.toggle('no_items');
-        el('input', item).checked = false;
+    var m_action = el('.m-action .m-act-btn', 'all');
+    m_action.forEach(function(btn) {
+      btn.addEventListener('click', function(e) {
+        bmf_bmhs_reset('toggle');
+        var _self = this;
+
+        // reset
+        var ma_active = el('.m-action .act-active');
+        if (ma_active && ma_active != _self) {
+          ma_active.classList.remove('act-active');
+          el(`.m-act-body .act-${ma_active.dataset.action}`).classList.add('no_items');
+          if (ma_active.hasAttribute('data-act-pos')) el('.m-act-body').classList.remove(ma_active.dataset.actPos);
+          if (ma_active.dataset.action == 'delete') el('.nav-delete').classList.add('no_items');
+        } else {
+          el('.m-act-body').classList.toggle('no_items');
+        }
+
+        // toggle
+        var act = _self.dataset.action;
+        _self.classList.toggle('act-active');
+        el(`.m-act-body .act-${act}`).classList.toggle('no_items');
+
+        if (_self.hasAttribute('data-act-pos')) {
+          el('.m-act-body').classList.remove('f_right'); // if has "act-pos" remove default
+          el('.m-act-body').classList.toggle(_self.dataset.actPos);
+        } else {
+          if (!is_mobile) el('.m-act-body').classList.add('f_right'); //default
+        }
+
+        if (act == 'delete') el('.nav-delete').classList.toggle('no_items');
+
+        el('.m-list .m-act-add', 'all').forEach(function(item) {
+          item.parentElement.classList.remove('highlighted');
+          item.classList.add('no_items');
+          if (item.classList.contains(act) && ma_active != _self) {
+            item.classList.toggle('no_items');
+            el('input', item).checked = false;
+          }
+        });
       });
     });
 
+    if (bmv_prm_slug == 'bookmark') {
+      el('.act-duplicate .merge').addEventListener('click', function() {
+        bmv_dt_delete = el('.act-duplicate textarea').value.replace(/\n+$/, '').split('\n');
+        if (bmv_dt_delete.length == 0 || bmv_dt_delete[0] == '') return;/* [''] */
+        el('.member .post-content').classList.add('loading', 'loge');
+
+        var d_slug = el('.act-duplicate input').value;
+        for (var i in bmv_dt_delete) bmf_bmhs_remove(`series/${bmv_dt_delete[i]}`, d_slug);
+      });
+    }
+
     el('.member .m-sort').addEventListener('change', function() {
-      bmf_bmhs_remove('reset');
+      bmf_bmhs_reset();
       bmf_member_bmhs_data(`${bmv_prm_slug}/sort`);
     });
 
     el('.member .m-filter').addEventListener('change', function() {
       this.dataset.value = this.value;
-      bmf_bmhs_remove('reset');
+      bmf_bmhs_reset();
       bmf_member_bmhs_data(`${bmv_prm_slug}/filter`);
     });
 
     el('.m-delete-select').addEventListener('click', function() {
       if (bmv_dt_delete.length == 0) return;
-      var str_confirm = '';
       var m_slug = '';
-      for (var i in bmv_dt_delete) {
-        m_slug += '\n👉 '+ bmv_dt_delete[i];
-      }
-      str_confirm = `Hapus series ini dari ${bmv_prm_slug}?${m_slug}`;
+      for (var i in bmv_dt_delete) m_slug += '\n👉 '+ bmv_dt_delete[i];
+      var str_confirm = `Hapus series ini dari ${bmv_prm_slug}?${m_slug}`;
       if (confirm(str_confirm)) {
         for (var j in bmv_dt_delete) {
-          el(`.member .m-list li[data-slug="${bmv_dt_delete[j]}"]`).classList.add('loading', 'loge');
+          el(`.m-list li[data-slug="${bmv_dt_delete[j]}"]`).classList.add('loading', 'loge');
           bmf_bmhs_remove(`series/${bmv_dt_delete[j]}`);
         }
       }
@@ -960,7 +1053,7 @@ function bmf_bmhs_fnc(note) {
 
     el('.m-select-all input').addEventListener('input', function() {
       var all_chk = this.checked;
-      el('.member .m-list .delete input', 'all').forEach(function(item) {
+      el('.m-list .delete input', 'all').forEach(function(item) {
         item.checked = all_chk ? true : false;
         triggerEvent('change', item);
       });
@@ -968,21 +1061,23 @@ function bmf_bmhs_fnc(note) {
 
     el('.ms-form .ms-reset').addEventListener('click', function() {
       this.classList.add('no_items');
-      bmf_bmhs_remove('reset');
+      bmhs_query = false;
+      bmf_bmhs_reset();
       el('.member .m-filter').disabled = false;
       bmf_member_bmhs_data(`${bmv_prm_slug}/reset`);
     });
 
     el('.ms-form .ms-search').addEventListener('click', function() {
       if (el('.ms-form input').value == '') return;
-      bmf_bmhs_remove('reset');
+      bmf_bmhs_reset();
+      bmhs_query = true;
       el('.ms-form .ms-reset').classList.remove('no_items');
       el('.member .m-filter').disabled = true;
       bmf_member_bmhs_data(`${bmv_prm_slug}/search`);
     });
 
     // bmhs: delete all
-    el('.m-delete-all').addEventListener('click', function() {
+    el('.act-delete').addEventListener('click', function() {
       el('.m-confirm').classList.remove('no_items');
       el('.m-confirm input').focus();
     });
@@ -1001,32 +1096,61 @@ function bmf_bmhs_fnc(note) {
   }
 
   if (bmv_prm_slug == 'history') {
-    el('.member .m-history .m-hs-list .detail ul', 'all').forEach(function(item) {
+    el('.m-history .m-hs-list .detail ul', 'all').forEach(function(item) {
       if (item.scrollHeight > item.clientHeight) item.classList.add('overflowing');
     });
   }
 
-  el('.member .m-list .delete', 'all').forEach(function(item) {
+  el('.m-list .delete', 'all').forEach(function(item) {
     item.addEventListener('change', function(e) {
       var m_slug = this.parentElement.dataset.slug;
       var m_note = el('input', this).checked ? 'add' : 'remove';
       bmv_dt_delete = modArray(m_note, bmv_dt_delete, m_slug);
 
+      this.parentElement.classList[m_note]('highlighted');
+      toggleClass(el('.m-delete-select'), 'pulse', bmv_dt_delete.length > 0);
       if (e.isTrusted) {
-        this.parentElement.classList.add('highlighted');
-        var all_chk = bmv_dt_delete.length == el('.member .m-list .delete', 'all').length;
+        var all_chk = bmv_dt_delete.length == el('.m-list .delete', 'all').length;
         el('.m-select-all input').checked = all_chk ? true : false;
       }
     });
   });
+
+  if (bmv_prm_slug == 'bookmark') {
+    el('.m-list .duplicate', 'all').forEach(function(item) {
+      item.addEventListener('change', function(e) {
+        var d_slug = this.parentElement.dataset.slug;
+        var d_rgx = new RegExp('^'+ d_slug +'(\\n|$)', 'gm');
+        var d_in = el('.act-duplicate input');
+        var d_ta = el('.act-duplicate textarea');
+        var in1 = d_in.value.search(d_rgx) == -1;
+
+        if (el('input', this).checked) { //add
+          var in2 = d_in.value == ''
+          if (in2 && d_in.value != d_slug) d_in.value = d_slug;
+          if (in1 && !in2 && d_ta.value.indexOf(d_slug) == -1) d_ta.value += d_slug +'\n';
+        } else { //remove
+          var d_target = !in1 ? d_in : d_ta;
+          d_target.value = d_target.value.replace(d_rgx, '');
+        }
+        this.parentElement.classList.toggle('highlighted');
+      });
+    });
+  }
+
+  var ma_active = el('.m-action .act-active');
+  if (ma_active) {
+    el(`.m-list .${ma_active.dataset.action}`, 'all').forEach(function(item) {
+      item.classList.remove('no_items');
+    });
+  }
 }
 
-function bmf_bmhs_filter(note, data, value) {
+function bmf_bmhs_filter(data, value) {
   if (value == '') return data;
   var m_val = value.split('|');
-  var m_filter = JSON.parse(`{"${m_val[0]}": "${m_val[1]}"}`);
-  if (note.indexOf('/search') != -1) m_filter[Object.keys(m_filter)] = new RegExp(m_val[1], 'gi');
-  return  bmf_filterBy(bmv_prm_slug, data, m_filter);
+  var m_filter = {[m_val[0]]: bmhs_query ? new RegExp(m_val[1], 'gi') : m_val[1]};
+  return bmf_filterBy(bmv_prm_slug, data, m_filter);
 }
 
 function bmf_bmhs_sort(note, data, value) {
@@ -1039,7 +1163,7 @@ function bmf_bmhs_nav_goto(page) {
   if (page == bmhs_current) return;
   document.body.scrollIntoView();
   bmhs_current = Number(page);
-  bmf_bmhs_set(`page-${bmhs_current}`);
+  bmf_bmhs_set('page-'+ bmhs_current);
 }
 
 function bmf_bmhs_nav_html() {
@@ -1119,13 +1243,13 @@ function bmf_bmhs_nav_html() {
 }
 
 function bmf_bmhs_html(note) {
-  var m_empty = '<div class="flex f_middle f_center full" style="min-height:130px;">'+ (note.indexOf('search') != -1 ? 'Tidak ditemukan' : firstUCase(bmv_prm_slug) +' Kosong') +'</div>';
+  var m_empty = '<div class="flex f_middle f_center full" style="min-height:130px;">'+ (bmhs_query ? 'Tidak ditemukan' : firstUCase(bmv_prm_slug) +' Kosong') +'</div>';
 
   if ((bmhs_arr && bmhs_arr.length == 0) || note == 'empty') {
     el('.member .m-list').innerHTML = m_empty;
   } else {
     bmhs_arr = bmf_bmhs_sort(note, bmhs_arr, el('.member .m-sort').value);
-    var m_newtab = bmv_dt_settings.link.indexOf(bmv_prm_slug) != -1;
+    var m_newtab = bmv_dt_st.link.includes(bmv_prm_slug);
 
     var str_bmhs = '';
     str_bmhs += '<div class="post post-list';
@@ -1133,15 +1257,18 @@ function bmf_bmhs_html(note) {
     str_bmhs += '"><ul class="flex_wrap">';
 
     for (var i = (bmhs_current-1) * bmhs_max; i < (bmhs_current * bmhs_max) && i < bmhs_arr.length; i++) {
-      var slug = 'slug_alt' in bmhs_arr[i] && bmv_dt_settings.source.site in bmhs_arr[i].slug_alt ? bmhs_arr[i].slug_alt[bmv_dt_settings.source.site] : bmhs_arr[i].slug;
+      var slug_chk = ('slug_alt' in bmhs_arr[i] && bmv_dt_st.source.site in bmhs_arr[i].slug_alt) && ('source' in bmhs_arr[i] && bmv_dt_st.source.site != bmhs_arr[i].source);
+      var slug = slug_chk ? bmhs_arr[i].slug_alt[bmv_dt_st.source.site] : bmhs_arr[i].slug;
       var title = bmhs_arr[i].title == '' ? 'untitled' : bmhs_arr[i].title;
+      var bmhs_slug = bmv_dt_st.source.site == 'webtoons' && 'titleNo' in bmhs_arr[i] ? (slug +'/?titleNo='+ bmhs_arr[i].titleNo) : slug;
+
       if (bmv_prm_slug == 'bookmark') {
-        str_bmhs += '<li class="flex f_column" data-slug="'+ bmhs_arr[i].slug +'">';
+        str_bmhs += '<li class="m-series flex f_column" data-slug="'+ bmhs_arr[i].slug +'">';
         str_bmhs += '<div class="cover f_grow">';
-        str_bmhs += '<a href="#/series/'+ slug;
+        str_bmhs += '<a href="#/series/'+ bmhs_slug;
         if (m_newtab) str_bmhs += '" target="_blank';
         str_bmhs += '"><img style="min-height:225px;" class="radius full_img loading loge lazy1oad" data-src="'+ bmhs_arr[i].cover +'" alt="'+ title +'" title="'+ title +'" referrerpolicy="no-referrer"></a>';
-        str_bmhs += '<span class="type m-icon btn radius '+ bmhs_arr[i].type +'"></span>';
+        if (bmhs_arr[i].type != '' && bmhs_arr[i].type != 'webtoon') str_bmhs += '<span class="type m-icon btn radius '+ bmhs_arr[i].type +'"></span>';
         if (bmhs_arr[i].status == 'completed') str_bmhs += '<span class="completed m-icon btn red radius">completed</span>';
         if (bmhs_arr[i].history == 'true') {
           var m_visited = genArray(bmhs_arr[i].hs_visited);
@@ -1149,30 +1276,29 @@ function bmf_bmhs_html(note) {
           str_bmhs += '<span class="last-read m-icon btn green nowrap" title="Last Read">ch. '+ m_visited[0].number +'</span>';
         }
         str_bmhs += '</div>'; //.cover
-        str_bmhs += '<div class="title"><a href="#/series/'+ slug;
+        str_bmhs += '<div class="title"><a href="#/series/'+ bmhs_slug;
         if (m_newtab) str_bmhs += '" target="_blank';
         str_bmhs += '"><h3 class="hd-title clamp">'+ title +'</h3></a></div>';
       } else { //history
-        str_bmhs += '<li class="flex f_between" data-slug="'+ bmhs_arr[i].slug +'">';
+        str_bmhs += '<li class="m-series flex f_between" data-slug="'+ bmhs_arr[i].slug +'">';
         str_bmhs += '<div class="cover">';
-        str_bmhs += '<a href="#/series/'+ slug;
+        str_bmhs += '<a href="#/series/'+ bmhs_slug;
         if (m_newtab) str_bmhs += '" target="_blank';
         str_bmhs += '"><img style="min-height:130px;" class="radius full_img loading loge lazy1oad" data-src="'+ bmhs_arr[i].cover +'" alt="'+ title +'" title="'+ title +'" referrerpolicy="no-referrer"></a>';
         if (bmhs_arr[i].bookmarked == 'true') str_bmhs += '<span class="bookmarked m-icon btn green" title="Bookmarked"><svg data-name="fa/bookmark" xmlns="http://www.w3.org/2000/svg" width="0.84em" height="1em" viewBox="0 0 1280 1536"><path fill="currentColor" d="M1164 0q23 0 44 9q33 13 52.5 41t19.5 62v1289q0 34-19.5 62t-52.5 41q-19 8-44 8q-48 0-83-32l-441-424l-441 424q-36 33-83 33q-23 0-44-9q-33-13-52.5-41T0 1401V112q0-34 19.5-62T72 9q21-9 44-9h1048z"/></svg></span>';
         if (bmhs_arr[i].status && bmhs_arr[i].status.search(/completed?|tamat/i) != -1) str_bmhs += '<span class="completed m-icon btn red radius">completed</span>';
         str_bmhs += '</div>'; //.cover
         str_bmhs += '<div class="detail">';
-        str_bmhs += '<div class="title"><a href="#/series/'+ slug;
+        str_bmhs += '<div class="title"><a href="#/series/'+ bmhs_slug;
         if (m_newtab) str_bmhs += '" target="_blank';
         str_bmhs += '"><h3 class="hd-title nowrap">'+ title +'</h3></a></div>';
-        str_bmhs += '<ul class="">';
+        str_bmhs += '<ul>';
+
         var m_visited = genArray(bmhs_arr[i].hs_visited);
         m_visited = sortBy(m_visited, 'added'); //descanding
         for (var j = 0; j < m_visited.length; j++) {
-          var chk_site = m_visited[[j]].site != bmv_dt_settings.source.site;
-          var m_url = slug +'/'+ m_visited[j].number +'/';
-          if (bmv_dt_settings.ch_url) m_url = m_url + encodeURIComponent('url='+ m_visited[j].url +'&');
-          m_url = m_url + encodeURIComponent('site='+ m_visited[j].site);
+          var chk_site = m_visited[j].site != bmv_dt_st.source.site;
+          var m_url = bmf_series_chapter_link('member/history', m_visited[j], slug);
           str_bmhs += '<li class="flex"><';
           if (chk_site) {
             str_bmhs += 'span title="source: '+ m_visited[j].site +'"';
@@ -1187,7 +1313,8 @@ function bmf_bmhs_html(note) {
         str_bmhs += '</ul>';
         str_bmhs += '</div>'; //.detail
       }
-      str_bmhs += '<label class="delete m-icon btn red no_items"><input type="checkbox"></label>';
+      str_bmhs += '<label class="delete m-act-add m-icon btn red no_items"><input class="hidden_items" type="checkbox"></label>';
+      if (bmv_prm_slug == 'bookmark') str_bmhs += '<label class="duplicate m-act-add m-icon btn no_items"><input class="hidden_items" type="checkbox"></label>';
       str_bmhs += '</li>';
     }
 
@@ -1204,11 +1331,11 @@ function bmf_bmhs_html(note) {
 
 function bmf_bmhs_set(note) {
   bmhs_length = Math.ceil(bmhs_arr.length / bmhs_max);
-  bmhs_current = note.search(/page-\d/) == -1 || bmhs_current < 1 ? 1 : bmhs_current;
+  bmhs_current = note.search(/(page-\d|\/delete)/) == -1 || bmhs_current < 1 ? 1 : bmhs_current;
   if (bmhs_current > bmhs_length) bmhs_current = bmhs_length;
 
   bmf_bmhs_html(note);
-  if (note.indexOf('search') != -1 && bmhs_arr.length <= 0) {
+  if (bmhs_query && bmhs_arr.length <= 0) {
     el('.member .m-pagination').classList.add('no_items');
   } else {
     bmf_bmhs_nav_html();
@@ -1217,13 +1344,16 @@ function bmf_bmhs_set(note) {
 }
 
 function bmf_member_bmhs_data(note) {
+  // generate bmhs data
   el('.member .m-list').classList.remove('loading', 'loge');
 
   if (bmv_dt_bmhs) {
     bmhs_arr = genArray(bmv_dt_bmhs);
     bmf_bmhs_change(`${bmv_prm_slug}|update`, bmhs_arr.length); //update "check" length on database
-    var m_filter = note.indexOf('/search') != -1 ? `title|${el('.ms-form input').value}` : el('.member .m-filter').value;
-    bmhs_arr = bmf_bmhs_filter(note, bmhs_arr, m_filter);
+    var m_filter = bmhs_query ? `title|${el('.ms-form input').value}` : el('.member .m-filter').value;
+    var m_arr = bmf_bmhs_filter(bmhs_arr, m_filter);
+    if (bmhs_query && m_arr.length == 0) m_arr = bmf_bmhs_filter(bmhs_arr, `slug|${el('.ms-form input').value}`); //2nd
+    bmhs_arr = m_arr;
     bmf_bmhs_set(note);
   } else { //empty
     bmf_bmhs_change(`${bmv_prm_slug}|remove`, 0); //reset to default
@@ -1475,7 +1605,7 @@ function bmf_member_profile_fnc() {
         if (el('.notif .not_verified')) removeElem('.notif .not_verified');
 
         el('.m-profile .m-detail').classList.remove('loading', 'loge');
-        el('.m-email .m-verified.not').innerHTML = 'Kirim ulang link verifikasi email dalam (<b>60</b>) detik</b>';
+        el('.m-email .m-verified.not').innerHTML = 'Kirim ulang link verifikasi email dalam (<b>60</b>) detik';
         el('.m-email .m-verified.not').classList.add('wait');
 
         var timeleft = 60;
@@ -1543,16 +1673,16 @@ function bmf_settings_changed(elem) {
   // note: 'theme' is excluded
   var st_changed;
   var st_id = (elem.id || elem.name).replace(/^st-/, '').replace(/-/g, '_');
-  var st = bmv_dt_settings[st_id];
+  var st = bmv_dt_st[st_id];
 
   if (elem.type == 'radio') {
     el(`#${elem.name} input`, 'all').forEach(function(item){ item.parentElement.classList.remove('highlighted'); });
     elem = el(`#${elem.name} input:checked`);
-    if (st_id == 'source') st = bmv_dt_settings.source.site;
+    if (st_id == 'source') st = bmv_dt_st.source.site;
     st_changed = elem.value != st;
   } else if (elem.type == 'checkbox') {
     if (st_id == 'link') {
-      st_changed = elem.checked && st.indexOf(elem.value) == -1 || !elem.checked && st.indexOf(elem.value) != -1;
+      st_changed = elem.checked && st.indexOf(elem.value) == -1 || !elem.checked && st.includes(elem.value);
     } else {
       st_changed = elem.checked !== st;
     }
@@ -1603,12 +1733,12 @@ function bmf_member_settings_fnc() {
   el('.st-save button').disabled = false;
   el('.st-control').classList.remove('loading', 'loge');
 
-  if (!(bmv_dt_settings.source.site in bmv_settings.source)) bmv_dt_settings.source = bmv_settings.default.source;
-  bmf_settings_fill(bmv_dt_settings);
+  if (!(bmv_dt_st.source.site in bmv_settings.source)) bmv_dt_st.source = bmv_settings.default.source;
+  bmf_settings_fill(bmv_dt_st);
 
   if (fbase_user && fbase_user['\x74\x69\x65\x72'] == '\x70\x72\x6f') {
     el('.st-ch-menu input').addEventListener('input', function() {
-      var cdn_el = el(`.st-cdn input[value="${bmv_dt_settings.cdn}"]`);
+      var cdn_el = el(`.st-cdn input[value="${bmv_dt_st.cdn}"]`);
       cdn_el.checked = true;
       triggerEvent('change', cdn_el);
       el('#st-cdn').classList.toggle('disabled');
@@ -1617,7 +1747,7 @@ function bmf_member_settings_fnc() {
 
   el('.st-theme input', 'all').forEach(function(item) {
     item.addEventListener('input', function(event) {
-      bmv_dt_settings.theme = this.value;
+      bmv_dt_st.theme = this.value;
       bmf_toggle_dark(event);
     });
   });
@@ -1630,7 +1760,7 @@ function bmf_member_settings_fnc() {
 
   el('#st-img-resize').addEventListener('input', function() {
     el('.st-quality').classList.toggle('disabled');
-    el('.st-quality input').value = bmv_dt_settings.resize_quality;
+    el('.st-quality input').value = bmv_dt_st.resize_quality;
     triggerEvent('change', el('.st-quality input'));
     el('.st-quality input').disabled = this.checked ? false : true;
   });
@@ -1688,45 +1818,42 @@ function bmf_member_settings_fnc() {
 
     if (fbase_user && fbase_user['\x74\x69\x65\x72'] == '\x70\x72\x6f') {
       var st_source = bmv_settings.source[el('.st-source input:checked').value];
-      bmv_dt_settings['source']['type'] = st_source.type;
-      bmv_dt_settings['source']['site'] = st_source.site;
-      bmv_dt_settings['sr_copy'] = el('.st-sr-copy input').checked;
-      bmv_dt_settings['sr_list'] = el('.st-sr-list input').checked;
-      bmv_dt_settings['ch_menu'] = el('.st-ch-menu input').checked;
-      bmv_dt_settings['ch_index'] = el('.st-ch-index input').checked;
-      bmv_dt_settings['cdn'] = el('.st-cdn input:checked').value;
-      bmv_dt_settings['src_link'] = el('.st-src-link input').checked;
-      bmv_dt_settings['cm_load'] = el('.st-cm-load input').checked;
+      bmv_dt_st['source']['type'] = st_source.type;
+      bmv_dt_st['source']['site'] = st_source.site;
+      bmv_dt_st['sr_copy'] = el('.st-sr-copy input').checked;
+      bmv_dt_st['sr_list'] = el('.st-sr-list input').checked;
+      bmv_dt_st['ch_menu'] = el('.st-ch-menu input').checked;
+      bmv_dt_st['ch_index'] = el('.st-ch-index input').checked;
+      bmv_dt_st['cdn'] = el('.st-cdn input:checked').value;
+      bmv_dt_st['src_link'] = el('.st-src-link input').checked;
+      bmv_dt_st['cm_load'] = el('.st-cm-load input').checked;
     }
 
-    bmv_dt_settings['theme'] = el('.st-theme input:checked').value;
-    bmv_dt_settings['cache'] = el('.st-cache input').value;
-    bmv_dt_settings['resize_quality'] = el('.st-quality input').value;
-    bmv_dt_settings['hs_stop'] = el('#st-hs-stop').checked;
-    bmv_dt_settings['img_resize'] = el('#st-img-resize').checked;
-    bmv_dt_settings['ch_url'] = el('#st-ch-url').checked;
+    bmv_dt_st['theme'] = el('.st-theme input:checked').value;
+    bmv_dt_st['cache'] = el('.st-cache input').value;
+    bmv_dt_st['resize_quality'] = el('.st-quality input').value;
+    bmv_dt_st['hs_stop'] = el('#st-hs-stop').checked;
+    bmv_dt_st['img_resize'] = el('#st-img-resize').checked;
+    bmv_dt_st['ch_url'] = el('#st-ch-url').checked;
 
     var link_list = [];
     el('.st-link input:checked', 'all').forEach(function(item) {
       link_list.push(item.value);
     });
-    bmv_dt_settings['link'] = link_list.join(', ');
+    bmv_dt_st['link'] = link_list.join(', ');
 
-    fbase.database().ref(bmf_fbase_path('settings')).update(bmv_dt_settings, function(error) {
+    fbase.database().ref(bmf_fbase_path('settings')).update(bmv_dt_st, function(error) {
       el('.st-control').classList.remove('loading', 'loge');
       if (error) {
         console.error('!! Error: Firebase "save" bmf_member_settings_fnc, code: '+ error.code +', message: '+ error.message);
         alert('!! Error: Firebase "save" bmf_member_settings_fnc(\n'+ error.message);
       } else {
-        if (bmv_dt_settings.theme == 'system') {
-          local('remove', 'bmv_theme');
-        } else{
-          local('set', 'bmv_theme', bmv_dt_settings.theme);
-        }
+        local('set', 'bmv_theme', bmv_dt_st.theme);
+        bmf_toggle_dark();
         var local_time = new Date().getTime();
-        bmv_dt_settings['update'] = local_time;
-        local('set', 'bmv_user_settings', JSON.stringify(bmv_dt_settings));
-        bmv_dt_settings = bmf_update_settings('update', bmv_dt_settings);
+        bmv_dt_st['update'] = local_time;
+        local('set', 'bmv_user_settings', JSON.stringify(bmv_dt_st));
+        bmv_dt_st = bmf_update_settings('update', bmv_dt_st);
         bmf_fbase_db_change('settings|check', bmf_fbase_path('check/settings'), 'set', {update: local_time});
         bmf_member_notif('success/settings', {timer: 3000, message: 'Pengaturan telah disimpan.'});
         el('.st-control .highlighted', 'all').forEach(function(item){ item.classList.remove('highlighted'); });
@@ -1747,8 +1874,9 @@ function bmf_member_settings_html() {
     str_settings += '<div class="st-source st-list" id="st-source">';
     str_settings += '<h2>API Sources</h2>';
     for (var site in bmv_settings.source) {
-      str_settings += `<label class="radio" title="${bmv_settings.source[site].type}"><input type="radio" name="st-source" value="${site}"><span></span>${site}`;
-      if ('lang' in bmv_settings.source[site]) str_settings += ` (${bmv_settings.source[site].lang})`;
+      str_settings += `<label class="radio" title="${bmv_settings.source[site].type}"><input type="radio" name="st-source" value="${site}"><span></span>${site.replace(/_/g, '-')}`;
+      if ('note' in bmv_settings.source[site]) str_settings += ` (${bmv_settings.source[site].note})`;
+      if ('lang' in bmv_settings.source[site]) str_settings += ` [${bmv_settings.source[site].lang}]`;
       str_settings += '</label>';
     }
     str_settings += '</div>'; //.st-source
@@ -1820,7 +1948,7 @@ function bmf_member_settings_html() {
   if (fbase_user && fbase_user['\x74\x69\x65\x72'] == '\x70\x72\x6f') el('.m-settings').classList.add('m-pro');
 
   bmf_fbase_db_get('member/settings', bmf_fbase_path('settings'), function(res) {
-    if (res.exists()) bmv_dt_settings = bmf_update_settings('member/database', res.val());
+    if (res.exists()) bmv_dt_st = bmf_update_settings('member/database', res.val());
     bmf_member_settings_fnc();
   });
 }
@@ -1847,8 +1975,8 @@ function bmf_member_form_fnc() {
         m_parent.classList.add('loading', 'loge');
 
         fbase.auth().signInWithEmailAndPassword(m_email.value, m_pass.value).then(function(user) {
-          if (wl.href.indexOf('continue=') != -1) {
-            wl.hash = bmf_getParam('continue', wl.href.replace(/\/#/, ''))[0];
+          if (wl.href.includes('continue=')) {
+            wl.hash = bmf_getParam('continue', whref)[0];
           } else {
             wl.hash = '#/member/profile';
           }
@@ -1944,7 +2072,7 @@ function bmf_member_fnc() {
     }
     if (bmv_prm_slug == 'bookmark' || bmv_prm_slug == 'history') {
       var order_by = bmv_prm_slug == 'bookmark' ? 'bookmarked' : bmv_prm_slug;
-      bmf_fbase_db_get(`member${bmv_prm_slug}`, bmf_fbase_path('series'), function(res) {
+      bmf_fbase_db_get(`member/${bmv_prm_slug}`, bmf_fbase_path('series'), function(res) {
         bmv_dt_bmhs = res.val();
         bmf_member_bmhs_data('first');
         document.addEventListener('keyup', bmf_bmhs_key);
@@ -1972,10 +2100,20 @@ function bmf_build_member() {
   str_member += '<span class="f_grow"></span>';
   if (fbase_login) {
     if (bmv_prm_slug == 'bookmark' || bmv_prm_slug == 'history') {
-      str_member += '<div class="m-delete flex f_middle no_items">';
-      str_member += '<span class="m-delete-btn btn btn-icon red" title="Delete"><svg data-name="bx/trash" xmlns="http://www.w3.org/2000/svg" width="1.2em" height="1.2em" viewBox="0 0 24 24"><path fill="currentColor" d="M5 20a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8h2V6h-4V4a2 2 0 0 0-2-2H9a2 2 0 0 0-2 2v2H3v2h2zM9 4h6v2H9zM8 8h9v12H7V8z"/><path fill="currentColor" d="M9 10h2v8H9zm4 0h2v8h-2z"/></svg></span>';
-      str_member += '<span class="m-delete-all m-space-h btn red no_items">'+ bmv_settings.l10n.member.delete_all +'</span>';
-      str_member += '</div>'; //.m-delete
+      str_member += '<div class="m-action flex f_middle no_items">';
+      str_member += '<span class="m-delete-btn m-act-btn btn btn-icon red" data-action="delete" title="Delete"><svg data-name="bx/trash" xmlns="http://www.w3.org/2000/svg" width="1.2em" height="1.2em" viewBox="0 0 24 24"><path fill="currentColor" d="M5 20a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8h2V6h-4V4a2 2 0 0 0-2-2H9a2 2 0 0 0-2 2v2H3v2h2zM9 4h6v2H9zM8 8h9v12H7V8z"/><path fill="currentColor" d="M9 10h2v8H9zm4 0h2v8h-2z"/></svg></span>';
+      if (bmv_prm_slug == 'bookmark') str_member += '<span class="m-duplicate-btn m-act-btn m-space-h btn btn-icon" data-action="duplicate" data-act-pos="f_center" title="Remove Duplicate"><svg data-name="pepicons-pop/duplicate-off" xmlns="http://www.w3.org/2000/svg" width="1.2em" height="1.2em" viewBox="0 0 20 20"><g fill="currentColor"><path fill-rule="evenodd" d="M15.5 6.5h-8a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1m-7 8v-6h6v6z" clip-rule="evenodd"/><path d="M6.5 13.5h-2a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v2h-2v-1h-6v6h1z"/><path d="M1.293 2.707a1 1 0 0 1 1.414-1.414l16 16a1 1 0 0 1-1.414 1.414z"/></g></svg></span>';
+      str_member += '</div>'; //.m-action
+      str_member += '<div class="m-act-body flex_wrap full no_items">';
+      str_member += '<div class="act-delete btn red no_items">'+ bmv_settings.l10n.member.delete_all +'</div>';
+      if (bmv_prm_slug == 'bookmark') {
+        str_member += '<div class="act-duplicate bg3 wBox full radius no_items">';
+        str_member += '<div>Main SLUG</div><input class="act-edit full" type="text"/>';
+        str_member += '<div>Duplicate SLUG - one per line</div><textarea class="act-edit full"></textarea>';
+        str_member += '<button class="merge btn green">Merge</button>';
+        str_member += '</div>'; //.act-duplicate
+      }
+      str_member += '</div>'; //.m-act-body
     }
     if (bmv_prm_slug == 'settings') {
       str_member += '<div class="flex f_middle">';
@@ -1989,7 +2127,7 @@ function bmf_build_member() {
   str_member += '<div class="m-notif m-text t_center'+ (fbase_login ? ' bg2 layer radius' : '') +' no_items"></div>';
   if (fbase_login) {
     if (bmv_prm_slug == 'bookmark' || bmv_prm_slug == 'history') {
-      str_member += '<div class="m-nav flex_wrap full radius no_items">';
+      str_member += '<div class="m-nav bg3 flex_wrap full radius no_items">';
       str_member += '<select class="m-sort mn-menu'+ (is_mobile ? ' f_grow' : '') +'"><option value="" disabled>Sort by</option>';
       if (bmv_prm_slug == 'bookmark') {
         str_member += '<option value="bm_added" selected>Added</option>';
@@ -2015,9 +2153,9 @@ function bmf_build_member() {
       str_member += '</div>'; //.nav-delete
       if (!is_mobile) str_member += '<span class="f_grow"></span>';
       str_member += '<div class="ms-form flex f_middle">';
-      str_member += '<span class="ms-reset btn red radius mn-menu no_items">'+ bmv_settings.l10n.member.reset +'</span>';
-      str_member += '<input class="ms-field radius f_grow" type="search" placeholder="'+ bmv_settings.l10n.title +'..." value=""/>';
-      str_member += '<span class="ms-search btn"><svg data-name="zondicons/search" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 20 20"><path fill="currentColor" d="M12.9 14.32a8 8 0 1 1 1.41-1.41l5.35 5.33l-1.42 1.42l-5.33-5.34zM8 14A6 6 0 1 0 8 2a6 6 0 0 0 0 12z"/></svg></span>';
+      str_member += '<span class="ms-reset btn red radius no_items">'+ bmv_settings.l10n.member.reset +'</span>';
+      str_member += '<input class="ms-field radius f_grow mn-menu" type="search" placeholder="'+ bmv_settings.l10n.title +'..." value=""/>';
+      str_member += '<span class="ms-search btn mn-menu"><svg data-name="zondicons/search" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 20 20"><path fill="currentColor" d="M12.9 14.32a8 8 0 1 1 1.41-1.41l5.35 5.33l-1.42 1.42l-5.33-5.34zM8 14A6 6 0 1 0 8 2a6 6 0 0 0 0 12z"/></svg></span>';
       str_member += '</div>'; //.ms-form
       str_member += '</div>'; //.m-nav
     }
@@ -2158,7 +2296,7 @@ function bmf_chapter_direction() {
     var dir_el = document.createElement('div');
     dir_el.classList.add('direction', 'flex', 'f_perfect', dir);
     dir_el.style.zIndex = '1';
-    dir_el.innerHTML = '<div class="dir-info fp_content t_center radius"><div class="dir-image"><img class="full" alt="' + dir_txt + '" src="./images/read-' + dir + '.png" title="' + dir_txt + '" alt="' + dir_txt + '"></div><div class="dir-text">' + dir_txt + '</div></div>';
+    dir_el.innerHTML = '<div class="dir-info fp_content t_center radius"><div class="dir-image"><img class="full" alt="'+ dir_txt +'" src="./images/read-'+ dir +'.png" title="'+ dir_txt +'" alt="'+ dir_txt +'"></div><div class="dir-text">'+ dir_txt +'</div></div>';
     document.body.appendChild(dir_el);
   }
   setTimeout(function() { removeElem('.direction') }, 1500);
@@ -2217,13 +2355,20 @@ function bmf_menu_fnc(img_list) {
     el('.cm_next2').classList.remove('no_items');
   }
 
+  if (is_mobile) {
+    el('.cm_resize input').checked = bmv_dt_st.img_resize;
+    el('.cm_resize').addEventListener('change', function(e) {
+      bmv_dt_st.img_resize = el('.cm_resize input').checked;
+    });
+  }
+
   el('.cm_toggle').addEventListener('click', function() {
     this.classList.toggle('db_danger');
     el('.ch_menu').classList.toggle('cm_shide');
     el('.cm_pause2').classList.toggle('no_items');
     if (is_mobile) {
       el('.cm_bg').classList.toggle('no_items');
-      if (el('.cm_next')) toggleClass(el('.cm_next'), ['no_hover', 'mobile_left_hand']);
+      if (el('.cm_next')) toggleMtClass(el('.cm_next'), ['no_hover', 'mobile_left_hand']);
     }
     el('.cm_tr2 .cm_td1').classList.toggle('no_items');
   });
@@ -2346,11 +2491,11 @@ function bmf_menu_fnc(img_list) {
   });
 
   if (bmv_chk_cdn) {
-    if (bmv_dt_settings.cdn == 'default') el(`.cm_cdn.cdn_${bmv_str_cdn}`).classList.add('cm_active');
+    if (bmv_dt_st.cdn == 'default') el(`.cm_cdn.cdn_${bmv_str_cdn}`).classList.add('cm_active');
     el(`.cm_cdn.cdn_${bmv_str_cdn}`).setAttribute('data-cdn', bmv_str_cdn_url);
   }
 
-  if (bmv_dt_settings.cdn != 'default') el(`.cm_cdn.cdn_${bmv_dt_settings.cdn}`).click();
+  if (bmv_dt_st.cdn != 'default') el(`.cm_cdn.cdn_${bmv_dt_st.cdn}`).click();
 
   el('.cm_zoom button', 'all').forEach(function(item) {
     item.addEventListener('click', function() {
@@ -2440,7 +2585,7 @@ function bmf_chapter_menu() {
   if (bmv_chk_gi) str_menu += '<div class="cm_size cm_btn btn">'+ bmv_str_gi +'</div>';
   str_menu += '</div>'; //.cm_others
   if (el('.ch-nav .prev') || el('.ch-nav .next')) {
-    var np_newtab = bmv_dt_settings.link.indexOf(`${bmv_current}-np`) != -1;
+    var np_newtab = bmv_dt_st.link.includes(`${bmv_current}-np`);
     str_menu += '<div class="cm_nav cm_line w100 flex">';
     if (el('.ch-nav .prev')) {
       str_menu += '<a class="cm_prev cm_btn btn no_items" title="arrow left &#x25C0;" href="'+ el('.ch-nav .prev').href;
@@ -2455,6 +2600,7 @@ function bmf_chapter_menu() {
     str_menu += '</div>'; //.cm_nav
   }
   str_menu += '<div class="cm_home cm_line w100"><a class="cm_btn btn" href="./">Homepage</a></div>';
+  if (is_mobile) str_menu += '<div class="cm_resize cm_line w100 in-check"><label class="checkbox" style="margin:4px"><input type="checkbox"><span></span>Image Resize</label></div>';
   str_menu += '<div class="cm_load cm_line flex_wrap">';
   str_menu += '<div class="flex f_middle">';
   str_menu += '<span class="cm_ld_current cm_text" title="Current image loading">LZ (0)</span>';
@@ -2532,47 +2678,49 @@ function bmf_chapter_middle() {
 
 function bmf_chapter_history(slug) {
   // generate & send chapter data to firebase realtime database
-  if (fbase_login && !bmv_dt_settings.hs_stop) {
+  if (fbase_login && !bmv_dt_st.hs_stop) {
     var c_path = bmf_fbase_path(`series/${slug}`);
-    var c_data = bmv_dt_settings.source.type.search(/eastheme|koidezign/) != -1 ? '/hs_visited' : ''; //different path for cover
+    var c_data = bmv_dt_st.source.type.search(/eastheme|koidezign/) != -1 ? '/hs_visited' : ''; //different path for cover
 
-    bmf_fbase_db_get('chapter/history', `${c_path + c_data}`, function(res) {
+    bmf_fbase_db_get('chapter/history', c_path + c_data, function(res) {
       if (!bmv_dt_chapter) return;
       var ch_data = bmf_fbase_gen('history|info|set', bmv_dt_chapter);
       var ch_visited = {};
 
+      var ch_current = { //add current chapter
+        number: bmv_dt_chapter.current,
+        added: new Date().getTime(),
+        site: bmv_dt_st.source.site //only for info (visited chapter)
+      };
+      if (bmv_dt_st.source.site == 'webtoons') {
+        ch_current['titleNo'] = bmv_dt_chapter.titleNo;
+        ch_data['titleNo'] = bmv_dt_chapter.titleNo;
+      } else {
+        ch_current['url'] = urls(bmv_dt_chapter.source).pathname;
+      }
+
       if (res.exists()) {
         // update history, get first {bmv_max_hv} data
         ch_visited = res.val();
-        if (bmv_dt_settings.source.type.search(/eastheme|koidezign/) == -1) ch_visited = 'hs_visited' in ch_visited ? ch_visited.hs_visited : {};
-        ch_visited[bmv_dt_chapter.current] = { //add current chapter
-          number: bmv_dt_chapter.current,
-          url: new URL(bmv_dt_chapter.source).pathname,
-          added: new Date().getTime(),
-          site: bmv_dt_settings.source.site //only for info (visited chapter)
-        };
+        if (bmv_dt_st.source.type.search(/eastheme|koidezign/) == -1) ch_visited = 'hs_visited' in ch_visited ? ch_visited.hs_visited : {};
+        ch_visited[bmv_dt_chapter.current] = ch_current;
         ch_visited = genArray(ch_visited); //convert to Array
         ch_visited = sortBy(ch_visited, 'added'); //sort by "added" (desc)
         ch_visited = firstArray(ch_visited, bmv_max_hv); //get first {bmv_max_hv} data
         ch_visited = genJSON(ch_visited, 'number'); //convert to JSON
       } else {
-        ch_visited[bmv_dt_chapter.current] = { //add current chapter
-          number: bmv_dt_chapter.current,
-          url: new URL(bmv_dt_chapter.source).pathname,
-          added: new Date().getTime(),
-          site: bmv_dt_settings.source.site //only for info (visited chapter)
-        };
+        ch_visited[bmv_dt_chapter.current] = ch_current;
         bmf_bmhs_change('history|set');
       }
 
-      if (bmv_dt_chapter.slug != slug) {
-        var slug_alt = 'slug_alt' in ch_data ? ch_data.slug_alt : {};
-        slug_alt[bmv_dt_settings.source.site] = bmv_dt_chapter.slug;
-        ch_data.slug_alt = slug_alt;
+      if (bmv_chk_dp) {
+        var alt = ch_data.slug_alt || {}
+        alt[bmv_dt_st.source.site] = bmv_dt_chapter.slug;
+        ch_data['slug_alt'] = alt;
       }
       ch_data.slug = slug;
       ch_data.hs_visited = ch_visited;
-      var cover_chk = bmv_dt_settings.source.type.search(/eastheme|koidezign/) == -1 && res.exists() && 'cover' in bmv_dt_chapter && bmv_dt_chapter.cover == '';
+      var cover_chk = bmv_dt_st.source.type.search(/eastheme|koidezign/) == -1 && res.exists() && 'cover' in bmv_dt_chapter && bmv_dt_chapter.cover == '';
       if (cover_chk) ch_data.cover = res.val().cover;
       bmf_fbase_db_change('chapter/history/set', c_path, 'update', ch_data); //use "update" to keep "other data" from being deleted
     });
@@ -2583,6 +2731,7 @@ function bmf_chapter_nav(note, data) {
   if (!bmv_dt_chapter || data.code != 200) return;
   var json = JSON.parse(data.response);
   bmv_dt_series = json;
+  if (bmv_dt_chapter.title == '') bmv_dt_chapter.title = bmv_dt_series.title;
   bmf_fbase_slug('chapter', {"slug": bmv_dt_chapter.slug, "title": bmv_dt_series.title}, bmf_chapter_history);
 
   if (json.status_code == 200) {
@@ -2596,7 +2745,7 @@ function bmf_chapter_nav(note, data) {
     for (var i = 0; i < lists.length; i++) {
       str_ch_nav += '<option value="'+ lists[i].number +'"';
       if (lists[i].number.replace(/[\.\s\t\-]+/g, '-').toLowerCase() == bmv_dt_chapter.current) { str_ch_nav += ' selected="selected"'; }
-      str_ch_nav += '>Chapter '+ lists[i].number.replace(/[-\s]((bahasa?[-\s])?indo(nesiaa?)?|full)/, '') +'</option>';
+      str_ch_nav += '>Chapter '+ lists[i].number.replace(/[-\s]((bahasa?[-\s])?(\bindo\b|indonesiaa?)|full)/, '') +'</option>';
     }
     str_ch_nav += '</select>';
 
@@ -2626,19 +2775,19 @@ function bmf_chapter_fnc() {
   });
 }
 
-function bmf_build_chapter_nav(data) {
-  var np_newtab = bmv_dt_settings.link.indexOf(`${bmv_current}-np`) != -1;
+function bmf_build_chapter_nav() {
+  var np_newtab = bmv_dt_st.link.includes(`${bmv_current}-np`);
   var str_ch_nav = '';
 
   str_ch_nav += '<span class="ch-number">Loading..</span>';
   str_ch_nav += '<span class="f_grow"></span>';
   if ('number' in bmv_dt_chapter.prev) {
-    str_ch_nav += '<a class="prev ctrl btn radius" href="'+ '#/chapter/'+ bmf_series_chapter_link('nav/prev', bmv_dt_chapter.prev, bmv_dt_chapter.slug);
+    str_ch_nav += '<a class="prev ctrl btn radius" href="'+ '#/chapter/'+ bmf_series_chapter_link('nav/prev', bmv_dt_chapter.prev);
     if (np_newtab) str_ch_nav += '" target="_blank';
     str_ch_nav += '">&#x25C0;&#160;&#160;'+ bmv_settings.l10n.prev +'</a>';
   }
   if ('number' in bmv_dt_chapter.next) {
-    str_ch_nav += '<a class="next ctrl btn radius" href="'+ '#/chapter/'+ bmf_series_chapter_link('nav/next', bmv_dt_chapter.next, bmv_dt_chapter.slug);
+    str_ch_nav += '<a class="next ctrl btn radius" href="'+ '#/chapter/'+ bmf_series_chapter_link('nav/next', bmv_dt_chapter.next);
     if (np_newtab) str_ch_nav += '" target="_blank';
     str_ch_nav += '">'+ bmv_settings.l10n.next +'&#160;&#160;&#x25B6;</a>';
   }
@@ -2650,22 +2799,25 @@ function bmf_build_chapter(data) {
   // Display "chapter" page
   bmv_dt_chapter = data;
   bmv_zoom_id = data.slug;
+  var title = data.title == '' ? firstUCase(data.slug.replace(/-/g, '\x20'), true) : data.title;
   var images = data.images;
-  var ch_current = data.current.replace(/[-\s]((bahasa?[-\s])?indo(nesiaa?)?|full)/, '');
-  var ch_title = data.title +' Chapter '+ ch_current;
-  var bc_newtab = bmv_dt_settings.link.indexOf(`${bmv_current}-bc`) != -1;
-  var img_newtab = bmv_dt_settings.link.indexOf(`${bmv_current}-img`) != -1;
+  var ch_current = data.current.replace(/[-\s]((bahasa?[-\s])?(\bindo\b|indonesiaa?)|full)/, '');
+  var ch_title = title +' Chapter '+ ch_current;
+  var bc_newtab = bmv_dt_st.link.includes(`${bmv_current}-bc`);
+  var img_newtab = bmv_dt_st.link.includes(`${bmv_current}-img`);
 
   var str_chapter = '';
   str_chapter += '<div class="ch-header layer"><h1 class="hidden_items">'+ ch_title +'</h1>';
   str_chapter += '<div class="breadcrumb'+ (is_mobile ? ' bg2 t_center' : '') +'"><a href="#/latest';
   if (bc_newtab) str_chapter += '" target="_blank';
-  str_chapter += '">'+ bmv_settings.l10n.homepage +'</a> &#62; <a href="'+ bmv_series_list;
+  str_chapter += '">'+ bmv_settings.l10n.homepage +'</a> &#62; <a href="'+ bmv_sr_list;
   if (bc_newtab) str_chapter += '" target="_blank';
-  str_chapter += '">Series</a> &#62; <a href="#/series/'+ data.slug +'" title="'+ data.title;
+  str_chapter += '">Series</a> &#62; <a href="#/series/'+ data.slug;;
+  if (bmv_dt_st.source.site == 'webtoons') str_chapter += '/?titleNo='+ bmv_dt_chapter.titleNo;
+  str_chapter += '" title="'+ title;
   if (bc_newtab) str_chapter += '" target="_blank';
-  str_chapter += '"><span class="bc-title'+ (is_mobile ? '' : ' nowrap') +'">'+ data.title +'</span></a> &#62; Chapter '+ ch_current +'</div></div>';
-  str_chapter += '<div class="ch-nav flex layer">'+ bmf_build_chapter_nav(bmv_dt_chapter) +'</div>';
+  str_chapter += '"><span class="bc-title'+ (is_mobile ? '' : ' nowrap') +'">'+ title +'</span></a> &#62; Chapter '+ ch_current +'</div></div>';
+  str_chapter += '<div class="ch-nav flex layer">'+ bmf_build_chapter_nav() +'</div>';
   str_chapter += '<div id="reader" class="max_chapter flex_wrap';
   if (images.length > 0) {
     str_chapter += '">';
@@ -2675,10 +2827,10 @@ function bmf_build_chapter(data) {
       str_chapter += '<a class="ch-images full" data-index="'+ (i + 1) +'" href="'+ images[i] +'#'+ (i + 1);
       if (img_newtab) str_chapter += '" target="_blank';
       str_chapter += '"><img style="min-height:750px;" class="full_img loading loge lazy1oad" data-index="'+ (i + 1) +'" data-src="'+ (images[i] +'#'+ (i + 1)) +'" title="'+ img_attr +'" alt="'+ img_attr +'" referrerpolicy="no-referrer">';
-      if (fbase_user && fbase_user['\x74\x69\x65\x72'] == '\x70\x72\x6f' && bmv_dt_settings.ch_index) str_chapter += '<div class="ch-index"><div class="sticky"><div class="btn">'+ (i + 1) +'</div></div></div>';
+      if (fbase_user && fbase_user['\x74\x69\x65\x72'] == '\x70\x72\x6f' && bmv_dt_st.ch_index) str_chapter += '<div class="ch-index"><div class="sticky"><div class="btn">'+ (i + 1) +'</div></div></div>';
       str_chapter += '</a>';
 
-      if (fbase_user && fbase_user['\x74\x69\x65\x72'] == '\x70\x72\x6f' && bmv_dt_settings.ch_menu) {
+      if (fbase_user && fbase_user['\x74\x69\x65\x72'] == '\x70\x72\x6f' && bmv_dt_st.ch_menu) {
         // Check CDN
         if (!bmv_chk_cdn && images[i].match(bmv_rgx_cdn)) {
           var cdn_match = images[i].match(bmv_rgx_cdn);
@@ -2702,7 +2854,7 @@ function bmf_build_chapter(data) {
     str_chapter += ' f_middle f_center" style="height:50vh;">Tidak ada Chapter';
   }
   str_chapter += '</div>';
-  str_chapter += '<div class="ch-nav flex layer">'+ bmf_build_chapter_nav(bmv_dt_chapter) +'</div>';
+  str_chapter += '<div class="ch-nav flex layer">'+ bmf_build_chapter_nav() +'</div>';
   str_chapter += '<div id="disqus_thread"><div class="full t_center"><button class="disqus-trigger btn bgrey">'+ bmv_settings.l10n.comment_btn +'</button></div></div>';
   str_chapter += '<div class="_reader" style="position: relative;"></div>';
   bmv_el_post.innerHTML = str_chapter;
@@ -2710,10 +2862,15 @@ function bmf_build_chapter(data) {
   bmf_chapter_fnc();
   bmv_el_images = el('#reader');
   if (fbase_user && fbase_user['\x74\x69\x65\x72'] == '\x70\x72\x6f') {
-    if (bmv_dt_settings.ch_menu) bmf_chapter_menu();
-    if (bmv_dt_settings.ch_index) document.addEventListener('scroll', bmf_chapter_middle); //ch-index
+    if (bmv_dt_st.ch_menu) bmf_chapter_menu();
+    if (bmv_dt_st.ch_index) document.addEventListener('scroll', bmf_chapter_middle); //ch-index
   }
-  bmf_loadXMLDoc({note:`xhr/${bmv_current}/nav`}, `${api_path}/api/?source=${bmv_dt_settings.source.site}&index=series&slug=${data.slug}&cache=${bmv_dt_settings.cache}`, bmf_chapter_nav); //get data from series for type & chapter list
+
+  // get data from series for type & chapter list
+  var ch_series = `${api_path}/api/?source=${bmv_dt_st.source.site}&index=series&slug=${data.slug}`;
+  if (bmv_dt_st.source.site == 'webtoons') ch_series += '&titleNo='+ bmv_dt_chapter.titleNo;
+  ch_series += '&cache='+ bmv_dt_st.cache;
+  bmf_loadXMLDoc({note:`xhr/${bmv_current}/nav`}, ch_series, bmf_chapter_nav);
 }
 
 // #===========================================================================================#
@@ -2728,22 +2885,31 @@ function bmf_series_chapter_number(check) {
 
 function bmf_series_chapter_link(note, data, slug) {
   if (note.search(/\/select/i) != -1) data = bmf_series_chapter_number(data);
-  var ch_link = (slug || bmv_dt_series.slug) +'/'+ data.number.replace(/[\.\s\t\-]+/g, '-').toLowerCase();
-  if (bmv_dt_settings.ch_url) ch_link += '/'+ encodeURIComponent('url='+ data.url);
-  if (note == 'visited') ch_link += (bmv_dt_settings.ch_url ? '&' : '/')+ encodeURIComponent('site='+ data.site);
+  var ch_link = (slug || window['bmv_dt_'+ bmv_current].slug) +'/'+ data.number.replace(/[\.\s\t\-]+/g, '-').toLowerCase();
+
+  var ch_query = '';
+  var sr_id = (window['bmv_dt_'+ bmv_current] || data).titleNo;
+  if (bmv_dt_st.source.site == 'webtoons' && sr_id) {
+    ch_query = 'titleNo='+ sr_id;
+  } else {
+    if (bmv_dt_st.ch_url) ch_query = 'url='+ data.url;
+  }
+  if (note == 'visited') ch_query += (ch_query != '' ? '&' : '') + 'site='+ data.site;
+
+  ch_link += '/'+ encodeURIComponent(ch_query);
   return ch_link;
 }
 
 function bmf_series_chapter_list(note, data) {
   // Display chapter list
-  var s_newtab = bmv_dt_settings.link.indexOf(bmv_current) != -1;
+  var s_newtab = bmv_dt_st.link.includes(bmv_current);
   var str_lists = '';
 
   if (data.length > 0) {
     if (note == 'visited') str_lists += '<div class="ch-title">'+ bmv_settings.l10n.series.visited +'</div>';
     str_lists += '<ul class="flex_wrap">';
     for (var i in data) {
-      var chk_site = note == 'visited' && data[i].site != bmv_dt_settings.source.site;
+      var chk_site = note == 'visited' && (data[i].site != bmv_dt_st.source.site || bmv_chk_dp);
       str_lists += '<li><';
       if (chk_site) {
         str_lists += 'span title="source: '+ data[i].site +'"';
@@ -2751,7 +2917,7 @@ function bmf_series_chapter_list(note, data) {
         str_lists += 'a href="#/chapter/'+ bmf_series_chapter_link(note, data[i]) +'"';
         if (s_newtab) str_lists += ' target="_blank"';
       }
-      str_lists += ' class="chapter full radius">Chapter '+ data[i].number.replace(/[-\s]((bahasa?[-\s])?indo(nesiaa?)?|full)/, '') +'</';
+      str_lists += ' class="chapter full radius">Chapter '+ data[i].number.replace(/[-\s]((bahasa?[-\s])?(\bindo\b|indonesiaa?)|full)/, '') +'</';
       str_lists += chk_site ? 'span' : 'a';
       str_lists += '></li>';
     }
@@ -2767,7 +2933,7 @@ function bmf_series_fnc(slug) {
 
   el('.info-left img').addEventListener('error', function() {
     if (this.dataset.src != '' && this.dataset.ref == 'false') {
-      this.src = `${api_path}/tools/img_ref.php?ref=${encodeURIComponent(bmv_lazy_referer)}&url=`+ encodeURIComponent(this.dataset.src);
+      this.src = `${api_path}/tools/img_ref.php?ref=${encodeURIComponent(bmv_lz_referer)}&url=`+ encodeURIComponent(this.dataset.src);
     } else {
       this.classList.remove('loading', 'loge');
       this.classList.add('no-image');
@@ -2784,14 +2950,17 @@ function bmf_series_fnc(slug) {
         s_bm.classList.add('marked', 'red');
         s_bm.removeAttribute('disabled');
 
-        // update bookmark
+        // sync/update bookmark data
         var data = bmf_fbase_gen('bookmark|info|update', bmv_dt_series);
-        if (bmv_dt_series.slug != slug) {
-          var slug_alt = 'slug_alt' in data ? data.slug_alt : {};
-          slug_alt[bmv_dt_settings.source.site] = bmv_dt_series.slug;
-          data.slug_alt = slug_alt;
+        if (bmv_chk_dp) {
+          delete data.source;
+
+          var alt = data.slug_alt || {}
+          alt[bmv_dt_st.source.site] = bmv_dt_series.slug;
+          data['slug_alt'] = alt;
         }
         data.slug = slug;
+        if (bmv_dt_st.source.site == 'webtoons') data['titleNo'] = bmv_dt_series.titleNo;
         bmf_fbase_db_change('series/bookmark', s_path, 'update', data);
       } else {
         s_bm.classList.remove('wait', 'marked', 'red');
@@ -2808,7 +2977,7 @@ function bmf_series_fnc(slug) {
           var hs_list = [];
           for (var i in hs_data) {
             hs_list.push(hs_data[i]);
-            var ch_number = bmv_dt_settings.ch_url ? `*="/${hs_data[i].number}/` : `$="/${hs_data[i].number}`;
+            var ch_number = bmv_dt_st.ch_url ? `*="/${hs_data[i].number}/` : `$="/${hs_data[i].number}`;
             var ch_visited = el(`.chapter-list a[href${ch_number}"]`);
             if (ch_visited) ch_visited.classList.add('visited');
           }
@@ -2857,8 +3026,9 @@ function bmf_series_fnc(slug) {
             s_bm.classList.remove('wait');
             alert(`Total bookmark telah melampaui kuota (${bmv_max_bmhs}), coba hapus bookmark lain.`);
           } else {
-            var bbmhs_arr = bmf_fbase_gen('bookmark|info|set', bmv_dt_series);
-            bmf_fbase_db_change('series/bookmark/set', s_path, 'update', bbmhs_arr, function() { //use "update" to keep "history" from being deleted
+            var bm_arr = bmf_fbase_gen('bookmark|info|set', bmv_dt_series);
+            if (bmv_dt_st.source.site == 'webtoons') bm_arr['titleNo'] = bmv_dt_series.titleNo;
+            bmf_fbase_db_change('series/bookmark/set', s_path, 'update', bm_arr, function() { //use "update" to keep "history" from being deleted
               s_bm.classList.remove('wait');
               s_bm.classList.add('marked', 'red');
             });
@@ -2918,16 +3088,16 @@ function bmf_build_series(data) {
   // Display "series" page
   bmv_dt_series = data;
   bmf_chapter_zoom(data.slug, data.detail.type);
-  var s_newtab = bmv_dt_settings.link.indexOf(bmv_current) != -1;
+  var s_newtab = bmv_dt_st.link.includes(bmv_current);
 
   var str_series = '';
   str_series += '<div class="post-header flex f_middle">';
-  if (fbase_user && fbase_user['\x74\x69\x65\x72'] == '\x70\x72\x6f' && bmv_dt_settings.sr_copy) str_series += '<span class="s-copy" title="Copy Title"><svg data-name="zondicons/copy" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20"><path fill="currentColor" d="M6 6V2c0-1.1.9-2 2-2h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-4v4a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V8c0-1.1.9-2 2-2h4zm2 0h4a2 2 0 0 1 2 2v4h4V2H8v4zM2 8v10h10V8H2z"/></svg></span>';
-  str_series += '<h1 class="title">' + data.title + '</h1>';
+  if (fbase_user && fbase_user['\x74\x69\x65\x72'] == '\x70\x72\x6f' && bmv_dt_st.sr_copy) str_series += '<span class="s-copy" title="Copy Title"><svg data-name="zondicons/copy" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20"><path fill="currentColor" d="M6 6V2c0-1.1.9-2 2-2h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-4v4a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V8c0-1.1.9-2 2-2h4zm2 0h4a2 2 0 0 1 2 2v4h4V2H8v4zM2 8v10h10V8H2z"/></svg></span>';
+  str_series += '<h1 class="title">'+ data.title +'</h1>';
   str_series += '</div>'; //.post-header
   str_series += '<div class="flex_wrap f_between '+ (fbase_login ? 'login' : 'not-login') +'">';
   str_series += '<div class="info info-left">';
-  str_series += '<div class="cover"><img style="min-height:330px;" class="radius full_img loading loge" data-src="'+ data.cover + '" data-ref="false" alt="'+ data.title +'" title="'+ data.title +'" referrerpolicy="no-referrer"></div>';
+  str_series += '<div class="cover"><img style="min-height:330px;" class="radius full_img loading loge" data-src="'+ data.cover +'" data-ref="false" alt="'+ data.title +'" title="'+ data.title +'" referrerpolicy="no-referrer"></div>';
   str_series += '<div class="bookmark wait btn flex f_middle f_center" data-slug="'+ data.slug +'" disabled><span class="svg"></span>Bookmark</div>';
   str_series += '<ul class="detail bg2 layer radius">';
   if (data.detail.type != '') str_series += '<li><b>Type</b> <div class="text">'+ firstUCase(data.detail.type) +'</div></li>';
@@ -2963,8 +3133,8 @@ function bmf_build_series(data) {
   str_series += '</div>'; //.chapters
   str_series += '<div id="disqus_thread"><div class="full t_center"><button class="disqus-trigger btn bgrey">'+ bmv_settings.l10n.comment_btn +'</button></div></div>';
   str_series += '</div>'; //.info-right
-  if (fbase_user && fbase_user['\x74\x69\x65\x72'] == '\x70\x72\x6f' && bmv_dt_settings.sr_list && is_mobile) str_series += '<div class="scroll-to-list btn bgrey">list</div>';
-  if (bmv_dt_settings.source.site.indexOf('tukangkomik') != -1 && data.slug.search(/^\d{5,}(\w{1,2})?-|-[a-z]{1,3}\d{1,3}$|-\d{1,3}[a-z]{1,3}$/i) != -1) str_series += '<div class="mod-slug btn bgrey pulse" title="remove random number from slug">slug</div>';
+  if (fbase_user && fbase_user['\x74\x69\x65\x72'] == '\x70\x72\x6f' && bmv_dt_st.sr_list && is_mobile) str_series += '<div class="scroll-to-list btn bgrey">list</div>';
+  if (bmv_dt_st.source.site.search(/tukangkomik|komiku/) != -1 && data.slug.search(/^\d{5,}(\w{1,2})?-|-[a-z]{1,3}\d{1,3}$|-\d{1,3}[a-z]{1,3}$/i) != -1) str_series += '<div class="mod-slug btn bgrey pulse" title="remove random number from slug">slug</div>';
   str_series += '</div>';
   bmv_el_post.innerHTML = str_series;
 
@@ -2976,7 +3146,7 @@ function bmf_build_series(data) {
 
 function bmf_search_result(data) {
   // Display advanced search result
-  var s_newtab = bmv_dt_settings.link.indexOf(bmv_current) != -1;
+  var s_newtab = bmv_dt_st.link.includes(bmv_current);
   var series = data.lists; //JSON data
 
   if (data.lists.length > 0) {
@@ -2984,23 +3154,35 @@ function bmf_search_result(data) {
     str_result += '<div class="post post-list"><ul class="flex_wrap">';
     for (var i = 0; i < series.length; i++) {
       str_result += '<li class="flex f_column">';
+
+      var s_cover = series[i].cover;
+      if (bmv_dt_st.source.site == 'komiku') {
+        var c_urls = urls(s_cover);
+        if (c_urls) {
+          c_urls.searchParams.set('resize', '210,270');
+          c_urls.search = c_urls.searchParams.toString();
+          s_cover = c_urls.href;
+        }
+      }
       str_result += '<div class="cover f_grow">';
-      str_result += '<a href="#/series/' + series[i].slug;
+      str_result += '<a href="#/series/'+ series[i].slug;
+      if (bmv_dt_st.source.site == 'webtoons') str_result += '/?titleNo='+ series[i].title_no;
       if (s_newtab) str_result += '" target="_blank';
-      str_result += '"><img style="min-height:225px;" class="radius full_img loading loge lazy1oad" data-src="' + series[i].cover + '" alt="' + series[i].title + '" title="' + series[i].title + '" referrerpolicy="no-referrer"></a>';
-      if (series[i].type != '') str_result += '<span class="type m-icon btn radius '+ series[i].type +'" title="'+ firstUCase(series[i].type) +'"></span>';
+      str_result += '"><img style="min-height:225px;" class="radius full_img loading loge lazy1oad" data-src="'+ s_cover +'" alt="'+ series[i].title +'" title="'+ series[i].title +'" referrerpolicy="no-referrer"></a>';
+      if (series[i].type != '' && bmv_dt_st.source.site != 'webtoons') str_result += '<span class="type m-icon btn radius '+ series[i].type +'" title="'+ firstUCase(series[i].type) +'"></span>';
       if (series[i].completed != '') str_result += '<span class="completed m-icon btn red radius">completed</span>';
       if (series[i].color) str_result += '<span class="color m-icon btn radius" title="Berwarna"><svg data-name="fa-solid/palette" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 512 512"><path fill="currentColor" d="M204.3 5C104.9 24.4 24.8 104.3 5.2 203.4c-37 187 131.7 326.4 258.8 306.7c41.2-6.4 61.4-54.6 42.5-91.7c-23.1-45.4 9.9-98.4 60.9-98.4h79.7c35.8 0 64.8-29.6 64.9-65.3C511.5 97.1 368.1-26.9 204.3 5zM96 320c-17.7 0-32-14.3-32-32s14.3-32 32-32s32 14.3 32 32s-14.3 32-32 32zm32-128c-17.7 0-32-14.3-32-32s14.3-32 32-32s32 14.3 32 32s-14.3 32-32 32zm128-64c-17.7 0-32-14.3-32-32s14.3-32 32-32s32 14.3 32 32s-14.3 32-32 32zm128 64c-17.7 0-32-14.3-32-32s14.3-32 32-32s32 14.3 32 32s-14.3 32-32 32z"/></svg></span>';
       str_result += '</div>';
-      str_result += '<div class="title"><a href="#/series/' + series[i].slug;
+      str_result += '<div class="title"><a href="#/series/'+ series[i].slug;
+      if (bmv_dt_st.source.site == 'webtoons') str_result += '/?titleNo='+ series[i].title_no;
       if (s_newtab) str_result += '" target="_blank';
-      str_result += '"><h3 class="hd-title clamp">' + series[i].title + '</h3></a></div>';
+      str_result += '"><h3 class="hd-title clamp">'+ series[i].title +'</h3></a></div>';
       str_result += '</li>';
     }
     str_result += '</ul></div>';
     bmv_el_result.innerHTML = str_result;
   } else {
-    bmv_el_result.innerHTML = '<div class="error t_center t_perfect layer2" style="min-height:50vh;"><div class="tp_content"><div class="info-result">Tidak ditemukan</div><div class="info-try">Silahkan coba lagi dengan kata kunci yang lain.</div></div></div>';
+    bmv_el_result.innerHTML = '<div class="error t_center t_perfect layer_x" style="min-height:50vh;"><div class="tp_content"><div class="info-result">Tidak ditemukan</div><div class="info-try">Silahkan coba lagi dengan kata kunci yang lain.</div></div></div>';
   }
   bmv_el_result.classList.remove('no_items');
 }
@@ -3031,10 +3213,10 @@ function bmf_search_adv_fill_set(url, param, type) {
 function bmf_search_fill() {
   // auto fill "filter input"
   if (bmv_chk_query) {
-    el('.quick-search .qs-field').value = bmf_getParam('query', wd)[0];
-    el('.search .post-header span').innerHTML = bmf_getParam('query', wd)[0];
+    el('.quick-search .qs-field').value = bmf_getParam('query', whref)[0];
+    el('.search .post-header span').innerHTML = bmf_getParam('query', whref)[0];
   } else {
-    var adv_wh = bmf_getParam('params', wd)[0];
+    var adv_wh = bmf_getParam('params', whref)[0];
     adv_wh = wl.protocol +'//'+ wl.hostname +'/?'+ decodeURIComponent(adv_wh);
 
     var adv_list = ['title','status','format','type','order','genre'];
@@ -3078,14 +3260,16 @@ function bmf_search_list(param, type) {
   var s_param = param;
   var s_list = s_adv[param];
 
-  if (param == 'status' && bmv_dt_settings.source.type == 'themesia') s_list.push({"value": "hiatus"});
-  if (bmv_dt_settings.source.type == 'enduser' && param == 'order') { //komikcast
+  if (param == 'status' && bmv_dt_st.source.type == 'themesia') s_list.push({"value": "hiatus"});
+
+  if (bmv_dt_st.source.type == 'enduser' && param == 'order') { //komikcast
     s_param = 'orderby';
     s_list[0].value = 'titleasc';
     s_list[1].value = 'titledesc';
     s_list = s_list.filter(function(obj) { return obj.value != 'latest'; });
   }
-  if (bmv_dt_settings.source.type == 'madara') {
+
+  if (bmv_dt_st.source.type == 'madara') {
     if (param == 'title') s_param = 's';
     if (param == 'status') {
       s_param += '[]';
@@ -3094,6 +3278,15 @@ function bmf_search_list(param, type) {
     if (param == 'order') {
       s_param = 'm_orderby';
       s_list = [{"value":"alphabet","label":"A-Z"},{"value":"latest","label":"Update"},{"value":"new-manga","label":"Added"},{"value":"views","label":"Popular"}];
+    }
+  }
+
+  if (bmv_dt_st.source.site == 'komiku') {
+    if (param == 'status') s_list[1] = {"value":"end","label":"Completed"};
+    if (param == 'type') s_param = 'category_name';
+    if (param == 'order') {
+      s_param = 'orderby';
+      s_list = [{"value":"modified","label":"Update"},{"value":"date","label":"Added"},{"value":"meta_value_num","label":"Popular"},{"value":"rand","label":"Random"}];
     }
   }
 
@@ -3117,21 +3310,22 @@ function bmf_build_search(data) {
   // Display "search" page
   bmv_dt_search = data;
   var s_page = getHash('page') ? ` \u2013 Laman ${getHash('page')}` : '';
+  var s_h1 = bmv_chk_query ? 'Hasil Pencarian: <span></span>' : bmv_dt_st.source.site == 'webtoons' ? bmv_settings.l10n.all_series : 'Advanced Search';
   var str_search = '';
 
-  str_search += '<div class="adv-search layer2">';
-  str_search += '<div class="post-header flex"><h1 class="title">'+ (bmv_chk_query ? 'Hasil Pencarian: <span></span>' : 'Advanced Search') + s_page +'</h1><span class="toggle btn t_center'+ (wh.indexOf('params=') != -1 ? '' : ' no_items') +'">+</span></div>';
+  str_search += '<div class="adv-search layer_x">';
+  str_search += '<div class="post-header flex"><h1 class="title">'+ s_h1 + s_page +'</h1><span class="toggle btn t_center'+ (wh.indexOf('params=') == -1 || bmv_dt_st.source.site == 'webtoons' ? ' no_items' : '') +'">+</span></div>';
   str_search += '<div class="filter in-check'+ (wh.search(/(query|params)=/) != -1 ? ' no_items' : '') +'"><table class="full"><tbody>';
-  if (bmv_dt_settings.source.type.search(/eastheme|koidezign|madara/) != -1) str_search += '<tr><td>'+ bmv_settings.l10n.title +'</td><td>'+ bmf_search_list('title', 'text') +'</td></tr>'; //"Title"
+  if (bmv_dt_st.source.type.search(/eastheme|koidezign|madara/) != -1) str_search += '<tr><td>'+ bmv_settings.l10n.title +'</td><td>'+ bmf_search_list('title', 'text') +'</td></tr>'; //"Title"
   str_search += '<tr><td>Status</td><td><ul class="status radio flex_wrap">';
   str_search += bmf_search_list('status');
   str_search += '</ul></td></tr>'; //"Status"
-  if (bmv_dt_settings.source.type == 'eastheme') {
+  if (bmv_dt_st.source.type == 'eastheme') {
     str_search += '<tr><td>Format</td><td><ul class="format radio flex_wrap">';
     str_search += bmf_search_list('format');
     str_search += '</ul></td></tr>'; //"Format"
   }
-  if (bmv_dt_settings.source.site.search(/klikmanga|leviatanscans/) == -1) {
+  if (bmv_dt_st.source.site.search(/klikmanga|leviatanscans/) == -1) {
     str_search += '<tr><td>Type</td><td><ul class="type radio flex_wrap">';
     str_search += bmf_search_list('type');
     str_search += '</ul></td></tr>'; //"Type"
@@ -3141,17 +3335,19 @@ function bmf_build_search(data) {
   str_search += '</ul></td></tr>'; //"Order/Sort"
   str_search += '<tr><td>Genre</td><td><ul class="genres checkbox flex_wrap">';
   for (var i in bmv_genres) {
-    str_search += '<li><label class="checkbox"><input type="checkbox" class="s-genre" name="genre[]" value="' + bmv_genres[i] + '"><span></span>' + firstUCase(bmv_genres[i]) + '</label></li>';
+    var g_type = bmv_dt_st.source.site == 'komiku' ? 'radio' : 'checkbox';
+    var g_name = bmv_dt_st.source.site == 'komiku' ? 'genre' : 'genre[]';
+    str_search += '<li><label class="'+ g_type +'"><input type="'+ g_type +'" class="s-genre" name="'+ g_name +'" value="'+ bmv_genres[i] +'"><span></span>'+ firstUCase(bmv_genres[i]) +'</label></li>';
   }
   str_search += '</ul></td></tr>';
-  str_search += '<tr><td class="submit t_center" colspan="2"><button type="button" class="btn" id="search_btn">Search</button>&nbsp;&nbsp;<button type="button" class="btn" id="reset_btn"'+ (bmv_prm_slug ? '' : ' disabled') +'>Reset</button></td></tr>';
+  str_search += '<tr><td class="submit t_center" colspan="2"><button type="button" class="btn" id="search_btn">Search</button>&nbsp;&nbsp;<button type="button" class="btn" id="reset_btn"'+ (urls(whref).search != '' ? '' : ' disabled') +'>Reset</button></td></tr>';
   str_search += '</tbody></table></div>'; //.filter
   str_search += '</div>'; //.adv-search
   str_search += '<div class="result no_items"></div>';
   bmv_el_post.innerHTML = str_search;
 
   bmv_el_result = el('.search .result');
-  if (bmv_prm_slug) bmf_search_fill();
+  if (urls(whref).search != '') bmf_search_fill();
   if (data) bmf_search_result(data);
 
   // Show/hide filter
@@ -3268,25 +3464,37 @@ function bmf_build_latest(data) {
   bmv_dt_latest = data;
   var series = data.lists;
   var l_page = getHash('page') ? ` \u2013 Laman ${getHash('page')}` : '';
-  var l_newtab = bmv_dt_settings.link.indexOf(bmv_current) != -1;
+  var l_newtab = bmv_dt_st.link.includes(bmv_current);
 
   var str_latest = '';
-  str_latest += '<div class="post-header layer2"><h2 class="title">'+ bmv_settings.l10n.latest_h2 + l_page +'</h2></div>';
+  str_latest += '<div class="post-header layer_x"><h2 class="title">'+ bmv_settings.l10n.latest_h2 + l_page +'</h2></div>';
   str_latest += '<div class="post post-list"><ul class="flex_wrap">';
   for (var i = 0; i < series.length; i++) {
     str_latest += '<li class="flex f_column">';
+
+    var l_cover = series[i].cover;
+    if (bmv_dt_st.source.site == 'komiku') {
+      var c_urls = urls(l_cover);
+      if (c_urls) {
+        c_urls.searchParams.set('resize', '210,270');
+        c_urls.search = c_urls.searchParams.toString();
+        l_cover = c_urls.href;
+      }
+    }
     str_latest += '<div class="cover f_grow">';
     str_latest += '<a href="#/series/'+ series[i].slug;
+    if (bmv_dt_st.source.site == 'webtoons') str_latest += '/?titleNo='+ series[i].title_no;
     if (l_newtab) str_latest += '" target="_blank';
-    str_latest += '"><img style="min-height:225px;" class="radius full_img loading loge lazy1oad" data-src="'+ series[i].cover +'" alt="'+ series[i].title +'" title="'+ series[i].title +'" referrerpolicy="no-referrer"></a>';
-    if (series[i].type != '') str_latest += '<span class="type m-icon btn radius '+ series[i].type +'" title="'+ firstUCase(series[i].type) +'"></span>';
+    str_latest += '"><img style="min-height:225px;" class="radius full_img loading loge lazy1oad" data-src="'+ l_cover +'" alt="'+ series[i].title +'" title="'+ series[i].title +'" referrerpolicy="no-referrer"></a>';
+    if (series[i].type != '' && bmv_dt_st.source.site != 'webtoons') str_latest += '<span class="type m-icon btn radius '+ series[i].type +'" title="'+ firstUCase(series[i].type) +'"></span>';
     if (series[i].completed) str_latest += '<span class="completed m-icon btn red radius">completed</span>';
     if (series[i].color) str_latest += '<span class="color m-icon btn radius" title="Berwarna"><svg data-name="fa-solid/palette" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 512 512"><path fill="currentColor" d="M204.3 5C104.9 24.4 24.8 104.3 5.2 203.4c-37 187 131.7 326.4 258.8 306.7c41.2-6.4 61.4-54.6 42.5-91.7c-23.1-45.4 9.9-98.4 60.9-98.4h79.7c35.8 0 64.8-29.6 64.9-65.3C511.5 97.1 368.1-26.9 204.3 5zM96 320c-17.7 0-32-14.3-32-32s14.3-32 32-32s32 14.3 32 32s-14.3 32-32 32zm32-128c-17.7 0-32-14.3-32-32s14.3-32 32-32s32 14.3 32 32s-14.3 32-32 32zm128-64c-17.7 0-32-14.3-32-32s14.3-32 32-32s32 14.3 32 32s-14.3 32-32 32zm128 64c-17.7 0-32-14.3-32-32s14.3-32 32-32s32 14.3 32 32s-14.3 32-32 32z"/></svg></span>';
     str_latest += '</div>'; //.cover
     str_latest += '<div class="title"><a href="#/series/'+ series[i].slug;
+    if (bmv_dt_st.source.site == 'webtoons') str_latest += '/?titleNo='+ series[i].title_no;
     if (l_newtab) str_latest += '" target="_blank';
     str_latest += '"><h3 class="hd-title clamp">'+ series[i].title +'</h3></a></div>';
-    if (series[i].chapter != '') str_latest += '<div class="l-chapter">'+ series[i].chapter.replace(/ch\.(\s+)?/i, 'Chapter ').replace(/[-\s]((bahasa?[-\s])?indo(nesiaa?)?|full)/, '') +'</div>';
+    if (series[i].chapter != '') str_latest += '<div class="l-chapter">Chapter '+ series[i].chapter.replace(/ch\.(\s+)?/i, '').replace(/[-\s]((bahasa?[-\s])?(\bindo\b|indonesiaa?)|full)/, '') +'</div>';
     if (series[i].date != '') {
       var l_date = isNaN(Date.parse(series[i].date)) ? series[i].date : timeDifference(series[i].date);
       str_latest += '<div class="date">'+ l_date +'</div>';
@@ -3303,7 +3511,7 @@ function bmf_notif_add(arr, show = true) {
   if (!show || arr.length == 0) return;
   arr.forEach(function(item) {
     var n_class = 'class' in item ? (' '+ item.class) : '';
-    el('.notif').innerHTML += `<div class="${item.type + n_class} message max t_center layer">${item.message}</div>`;
+    el('.notif').innerHTML += `<div class="${item.type + n_class} message t_center layer">${item.message}</div>`;
   });
 }
 
@@ -3317,10 +3525,10 @@ function bmf_toggle_dark(event) {
   var browser_theme = window.matchMedia('(prefers-color-scheme:dark)').matches ? 'dark' : 'light';
 
   DOC.classList.remove('system', 'dark', 'light');
-  if (!event) bmv_dt_settings.theme = local_theme;
-  var user_theme = bmv_dt_settings.theme == 'system' ? browser_theme : bmv_dt_settings.theme;
+  if (!event) bmv_dt_st.theme = local_theme;
+  var user_theme = bmv_dt_st.theme == 'system' ? browser_theme : bmv_dt_st.theme;
 
-  if (bmv_dt_settings.theme == 'system') {
+  if (bmv_dt_st.theme == 'system') {
     DOC.classList.add('system');
   } else {
     DOC.classList.remove('system');
@@ -3328,7 +3536,7 @@ function bmf_toggle_dark(event) {
 
   DOC.classList.remove('dark', 'light');
   DOC.classList.add(user_theme);
-  local('set', 'bmv_theme', bmv_dt_settings.theme);
+  local('set', 'bmv_theme', bmv_dt_st.theme);
 }
 
 function bmf_build_default_fnc() {
@@ -3354,7 +3562,7 @@ function bmf_build_default_fnc() {
   document.addEventListener('keyup', bmf_default_key);
 
   el('.theme-switch').addEventListener('click', function(event) {
-    bmv_dt_settings.theme = bmv_dt_settings.theme == 'system' ? 'dark' : bmv_dt_settings.theme == 'dark' ? 'light' : 'system';
+    bmv_dt_st.theme = bmv_dt_st.theme == 'system' ? 'dark' : bmv_dt_st.theme == 'dark' ? 'light' : 'system'; //system, dark, light
     bmf_toggle_dark(event);
   });
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', bmf_toggle_dark);
@@ -3368,7 +3576,7 @@ function bmf_build_default_fnc() {
       this.classList.toggle('qs-bg');
       document.body.classList.toggle('no_scroll');
       el('.quick-search .qs-close').classList.toggle('no_items');
-      toggleClass(el('.quick-search .qs-form'), ['qs-show', 'no_items']);
+      toggleMtClass(el('.quick-search .qs-form'), ['qs-show', 'no_items']);
       el('.quick-search .qs-field').select();
     });
     if (el('#back-to')) el('#back-to').classList.add('flex');
@@ -3410,7 +3618,8 @@ function bmf_build_footer() {
   if (bmv_current != 'chapter') str_footer += '<div class="message bg2 t_center layer radius">'+ bmv_settings.l10n.footer_msg +'</div>';
   str_footer += '<div class="flex_wrap '+ (is_mobile ? 'f_center t_center' : 'f_between') +'">';
   str_footer += '<div class="footer-left">© '+ new Date().getFullYear() +', Made with \ud83d\udc96 & \ud83d\ude4c by <a href="https://github.com/bakomon/web" target="_blank" title="Bakomon">Bakomon</a></div>';
-  str_footer += '<div class="footer-right"><a href="#/latest">'+ bmv_settings.l10n.homepage +'</a><span>|</span><a href="'+ bmv_series_list +'">'+ bmv_settings.l10n.all_series +'</a><span>|</span><a href="#/contact">Contact</a><span>|</span><a href="#/search" title="Advanced Search">Advanced search</a>';
+  str_footer += '<div class="footer-right"><a href="#/latest">'+ bmv_settings.l10n.homepage +'</a><span>|</span><a href="'+ bmv_sr_list +'">'+ bmv_settings.l10n.all_series +'</a><span>|</span><a href="#/contact">Contact</a>';
+  if (bmv_dt_st.source.site != 'webtoons') str_footer += '<span>|</span><a href="#/search" title="Advanced Search">Advanced search</a>';
   str_footer += '</div>'; //.footer-right
   str_footer += '</div>';
   str_footer += '</div>'; //.footer
@@ -3426,7 +3635,7 @@ function bmf_build_main() {
   if (bmv_chk_nav) str_main += '<div class="page-nav t_center"></div>';
   str_main += '</div>'; //.post-content
   str_main += '<div class="others">';
-  str_main += '<div class="clear-cache ot-icon pointer no_items" title="Clear Cache"><svg data-name="pajamas/clear-all" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"><path fill="currentColor" fill-rule="evenodd" d="M15.963 7.23A8 8 0 0 1 .044 8.841a.75.75 0 0 1 1.492-.158a6.5 6.5 0 1 0 9.964-6.16V4.25a.75.75 0 0 1-1.5 0V0h4.25a.75.75 0 0 1 0 1.5h-1.586a8.001 8.001 0 0 1 3.299 5.73ZM7 2a1 1 0 1 0 0-2a1 1 0 0 0 0 2Zm-2.25.25a1 1 0 1 1-2 0a1 1 0 0 1 2 0ZM1.5 6a1 1 0 1 0 0-2a1 1 0 0 0 0 2Z" clip-rule="evenodd"/></svg></div>';
+  str_main += '<div class="clear-cache ot-icon cs_pointer no_items" title="Clear Cache"><svg data-name="pajamas/clear-all" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"><path fill="currentColor" fill-rule="evenodd" d="M15.963 7.23A8 8 0 0 1 .044 8.841a.75.75 0 0 1 1.492-.158a6.5 6.5 0 1 0 9.964-6.16V4.25a.75.75 0 0 1-1.5 0V0h4.25a.75.75 0 0 1 0 1.5h-1.586a8.001 8.001 0 0 1 3.299 5.73ZM7 2a1 1 0 1 0 0-2a1 1 0 0 0 0 2Zm-2.25.25a1 1 0 1 1-2 0a1 1 0 0 1 2 0ZM1.5 6a1 1 0 1 0 0-2a1 1 0 0 0 0 2Z" clip-rule="evenodd"/></svg></div>';
   str_main += '<div class="source ot-icon no_items" title="Source Link"><a href="#" target="_blank"><svg data-name="icon-park-solid/source-code" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 48 48"><mask id="ipSSourceCode0"><g fill="none"><path stroke="#fff" stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="M23 40H7a3 3 0 0 1-3-3V11a3 3 0 0 1 3-3h34a3 3 0 0 1 3 3v14.882"/><path fill="#fff" stroke="#fff" stroke-width="4" d="M4 11a3 3 0 0 1 3-3h34a3 3 0 0 1 3 3v9H4v-9Z"/><path stroke="#fff" stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="m34 33l-4 4l4 4m6-8l4 4l-4 4"/><circle r="2" fill="#000" transform="matrix(0 -1 -1 0 10 14)"/><circle r="2" fill="#000" transform="matrix(0 -1 -1 0 16 14)"/></g></mask><path fill="currentColor" d="M0 0h48v48H0z" mask="url(#ipSSourceCode0)"/></svg></a></div>';
   str_main += '</div>'; //.others
   str_main += '</div>'; //.main
@@ -3449,7 +3658,9 @@ function bmf_build_header() {
   str_head += '<div class="title"><a href="./" title="Bakomon - Baca Komik Online"><'+ tag_head +' class="text">Bakomon</'+ tag_head +'><img alt="Bakomon" src="'+ logo_img +'" title="Bakomon - Baca Komik Indonesia Online"></a></div>';
   str_head += '<span class="f_grow"></span>';
   str_head += '<div class="navigation"><ul class="'+ (is_mobile ? 'bg2' : 'flex') +'">';
-  str_head += '<li><a href="#/latest">'+ bmv_settings.l10n.homepage +'</a></li><li><a href="'+ bmv_series_list +'">'+ bmv_settings.l10n.all_series +'</a></li><li><a href="#/search" title="Advanced Search">Adv Search</a></li><li><a href="#/contact">Contact</a></li>';
+  str_head += '<li><a href="#/latest">'+ bmv_settings.l10n.homepage +'</a></li><li><a href="'+ bmv_sr_list +'">'+ bmv_settings.l10n.all_series +'</a></li>';
+  if (bmv_dt_st.source.site != 'webtoons') str_head += '<li><a href="#/search" title="Advanced Search">Adv Search</a></li>';
+  str_head += '<li><a href="#/contact">Contact</a></li>';
   if (fbase_login) {
     str_head += '<li class="dropdown"><a href="javascript:void(0)">Member</a><ul class="full"><li class="selected"><a class="clamp lc1" href="javascript:void(0)" title="'+ fbase_user.uid +' | '+ fbase_user.displayName +'">'+ fbase_user.email +'&#12644;</a></li><li><a href="#/member/profile">'+ bmv_settings.l10n.member.profile +'</a></li><li><a href="#/member/bookmark">Bookmark</a></li><li><a href="#/member/history">History</a></li><li><a href="#/member/settings">'+ bmv_settings.l10n.member.settings +'</a></li><li><a href="javascript:bmf_fbase_logout()">'+ bmv_settings.l10n.member.logout +'</a></li></ul></li>';
   } else {
@@ -3464,7 +3675,7 @@ function bmf_build_header() {
     str_head += '<span class="qs-close no_items"><svg data-name="zondicons/close" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 20 20"><path fill="currentColor" d="M10 8.586L2.929 1.515L1.515 2.929L8.586 10l-7.071 7.071l1.414 1.414L10 11.414l7.071 7.071l1.414-1.414L11.414 10l7.071-7.071l-1.414-1.414L10 8.586z"/></svg></span>';
     str_head += '</div>';
   }
-  str_head += '<div class="qs-form flex f_middle'+ (is_mobile ? ' no_items' : '') +'">';
+  str_head += `<div class="qs-form flex f_middle ${is_mobile ? 'no_items' : ''}">`;
   str_head += '<input class="qs-field radius" type="search" placeholder="Judul..." value=""/>';
   str_head += '<button class="qs-search btn radius"><svg data-name="zondicons/search" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 20 20"><path fill="currentColor" d="M12.9 14.32a8 8 0 1 1 1.41-1.41l5.35 5.33l-1.42 1.42l-5.33-5.34zM8 14A6 6 0 1 0 8 2a6 6 0 0 0 0 12z"/></svg></button>';
   str_head += '</div>'; //.qs-form
@@ -3472,7 +3683,7 @@ function bmf_build_header() {
   str_head += '<div class="theme-switch"></div>';
   str_head += '</div></div>';
   str_head += '<div class="line"></div>';
-  str_head += '<div class="notif"></div>';
+  str_head += `<div class="notif ${is_mobile ? '' : 'max layer_x'}"></div>`;
   return str_head;
 }
 
@@ -3513,7 +3724,7 @@ function bmf_disqus_load(data) {
     window['disqus_url'] = disqus_vars.url;
     window['disqus_identifier'] = disqus_vars.identifier;
     window['disqus_title'] = disqus_vars.title;
-    addScript({data:'https://' + disqus_shortname + '.disqus.com/embed.js', id:'disqus-embed', async:true});
+    addScript({data:'https://'+ disqus_shortname +'.disqus.com/embed.js', id:'disqus-embed', async:true});
   }
 
   var disqus_config_custom = window.disqus_config;
@@ -3576,7 +3787,7 @@ function bmf_page_scroll() {
       if (!bmv_loaded_img) bmf_lazyLoad(el('#reader img', 'all'), 'scroll');
     }
 
-    if (fbase_user && fbase_user['\x74\x69\x65\x72'] == '\x70\x72\x6f' && bmv_dt_settings.ch_menu && el('.cm_nav .cm_next')) {
+    if (fbase_user && fbase_user['\x74\x69\x65\x72'] == '\x70\x72\x6f' && bmv_dt_st.ch_menu && el('.cm_nav .cm_next')) {
       // next background (mobile)
       if (is_mobile && (getOffset(check_point).bottom + bmv_half_screen) >= getOffset(el('#reader')).bottom) {
         el('.cm_nav .cm_next').classList.add('mlh_show');
@@ -3586,7 +3797,7 @@ function bmf_page_scroll() {
     }
 
     // auto show disqus
-    if (bmv_dt_settings.cm_load && el('.disqus-trigger') && (getOffset(check_point).bottom + window.screen.height) >= getOffset(el('.disqus-trigger')).bottom) el('.disqus-trigger').click();
+    if (bmv_dt_st.cm_load && el('.disqus-trigger') && (getOffset(check_point).bottom + window.screen.height) >= getOffset(el('.disqus-trigger')).bottom) el('.disqus-trigger').click();
   } else {
     if (el('img.lazy1oad')) bmf_lazyLoad(el('img.lazy1oad', 'all'));
   }
@@ -3630,7 +3841,7 @@ function bmf_build_page_api(json) {
   bmf_build_default();
 
   if (json.status_code == 200) {
-    bmv_lazy_referer = new URL(json.source).origin;
+    bmv_lz_referer = urls(json.source).origin;
 
     // Build element post
     if (bmv_current == 'latest') bmf_build_latest(json);
@@ -3672,7 +3883,7 @@ function bmf_build_page_api(json) {
     }
   });
 
-  if (bmv_dt_settings.src_link && 'source' in json && json.source != '') {
+  if (bmv_dt_st.src_link && 'source' in json && json.source != '') {
     el('.others .source a').href = json.source;
     el('.others .source').classList.remove('no_items');
   }
@@ -3685,8 +3896,8 @@ function bmf_param_member() {
   if (list_wh[2] && list_wh[2] != '') {
     bmv_prm_slug = list_wh[2];
     if (fbase_login) {
-      if (wl.href.indexOf('continue=') != -1) {
-        wl.hash = bmf_getParam('continue', wl.href.replace(/\/#/, ''))[0];
+      if (wl.href.includes('continue=')) {
+        wl.hash = bmf_getParam('continue', whref)[0];
         return;
       }
       if (bmv_prm_slug.search(/profile|bookmark|history|settings/i) == -1) {
@@ -3723,7 +3934,7 @@ function bmf_build_page(note, data) {
   } else {
     try {
       res = JSON.parse(data.response);
-    } catch(e) {
+    } catch (e) {
       res = {"status_code": 0, "response": data.response, "message": 'error' in data ? data.error : e};
     }
     bmf_build_page_api(res);
@@ -3731,7 +3942,7 @@ function bmf_build_page(note, data) {
 }
 
 function bmf_gen_url() {
-  var url_param = `?source=${bmv_dt_settings.source.site}`;
+  var url_param = `?source=${bmv_dt_st.source.site}`;
   url_param += `&index=${bmv_current}`;
 
   if (wh.search(/\/page\/\d+/) != -1) {
@@ -3739,27 +3950,29 @@ function bmf_gen_url() {
     url_param += `&page=${bmv_page_num}`;
   }
   if (bmv_current.search(/series|chapter/i) != -1 && bmv_prm_slug) url_param += `&slug=${bmv_prm_slug}`;
+  if (bmv_current == 'series' && bmv_dt_st.source.site == 'webtoons' && bmf_getParam('titleNo', whref)) url_param += '&titleNo='+ bmf_getParam('titleNo', whref)[0];
   if (bmv_current == 'chapter' && bmv_prm_chapter) url_param += `&chapter=${bmv_prm_chapter}`;
 
-  if (bmv_current == 'search' && bmv_prm_slug) {
-    bmv_prm_slug = bmv_prm_slug.match(/\?(query|params)=(.*)/);
-    url_param += `&${bmv_prm_slug[1]}=${bmv_prm_slug[2]}`;
+  var sc_lib;
+  if (bmv_current == 'search' && urls(whref).search != '') {
+    sc_lib = urls(whref).searchParams.get('params') == 'default';
+    url_param += '&'+ urls(whref).searchParams.toString();
   }
 
   var url_cache = sessionStorage.getItem('clear_cache');
   if (url_cache) {
     sessionStorage.removeItem('clear_cache');
-    bmv_dt_settings['cache'] = url_cache;
+    bmv_dt_st['cache'] = url_cache;
   }
 
-  bmv_url_api = `${api_path}/api/${url_param}&cache=${bmv_current == 'search' ? '0' : bmv_dt_settings.cache}`;
+  bmv_url_api = `${api_path}/api/${url_param}&cache=${bmv_current == 'search' && !sc_lib ? '0' : bmv_dt_st.cache}`;
   bmf_loadXMLDoc({note:`xhr/${bmv_current}`}, bmv_url_api, bmf_build_page);
 }
 
 function bmf_build_load(note) {
   if (!fbase_login) {
     local('remove', 'bmv_user_settings');
-    bmv_dt_settings = bmv_settings.default;
+    bmv_dt_st = bmv_settings.default;
   }
   if (bmv_page_type == 'direct') {
     bmf_build_page(note);
@@ -3769,12 +3982,12 @@ function bmf_build_load(note) {
 }
 
 function bmf_build_wait(note) {
-  bmv_page_type = note.indexOf('direct') != -1 ? 'direct' : 'api';
+  bmv_page_type = note.includes('direct') ? 'direct' : 'api';
   var tier_from, fbase_wait = setInterval(function() {
     if (fbase_loaded && fbase_init && fbase_observer) {
       clearInterval(fbase_wait);
       tier_from = setInterval(function() {
-        if (!fbase_login || fbase_login && 'tier' in fbase_user && bmv_dt_settings.from != 'default') {
+        if (!fbase_login || fbase_login && 'tier' in fbase_user && bmv_dt_st.from != 'default') {
           clearInterval(tier_from);
           clearTimeout(fbase_close);
           bmf_build_load(note);
@@ -3787,7 +4000,7 @@ function bmf_build_wait(note) {
     clearInterval(tier_from);
     var bw_msg = `!! Error: bmf_build_wait\n\nfbase_login = ${fbase_login};\n`;
     if (fbase_user) {
-      bw_msg += `fbase_user.tier = ${'tier' in fbase_user};\nbmv_dt_settings.from = ${bmv_dt_settings.from};`;
+      bw_msg += `fbase_user.tier = ${'tier' in fbase_user};\nbmv_dt_st.from = ${bmv_dt_st.from};`;
     } else {
       bw_msg += `fbase_loaded = ${fbase_loaded};\nfbase_init = ${fbase_init};\nfbase_observer = ${fbase_observer};`;
     }
@@ -3821,13 +4034,16 @@ function bmf_reset_var() {
   bmv_dt_series = null;
   bmv_dt_chapter = null;
   bmv_dt_bmhs = null;
+  bmv_dt_dplct = null;
   bmv_dt_error = null;
   bmv_dt_delete = [];
   bmv_dt_lazy = [];
   bmv_el_result = null;
   bmv_el_images = null;
   bmv_url_api = null;
-  bmv_lazy_referer = null;
+  bmv_lz_referer = null;
+  bmv_chk_dp = false;
+  bmhs_query = false;
   document.removeEventListener('scroll', bmf_page_scroll);
   document.removeEventListener('scroll', bmf_chapter_middle);
   document.removeEventListener('keyup', bmf_default_key);
@@ -3838,8 +4054,7 @@ function bmf_reset_var() {
 }
 
 function bmf_update_settings(note, newdata) {
-  // modify object and not the original https://stackoverflow.com/a/29050089
-  var data = Object.assign({}, bmv_settings.default);
+  var data = copyObject(bmv_settings.default);
   for (var key in newdata) {
     data[key] = newdata[key];
   }
@@ -3852,13 +4067,13 @@ function bmf_get_fragment() {
   bmf_reset_var();
   bmv_start = true;
   wh = wl.hash;
-  wd = wl.href.replace(/\/(\?.+=.+)?#/, '');
+  whref = wl.href.replace(/\/(\?.+=.+)?#/, ''); //without /#/
   document.title = 'Loading... \u2013 Bakomon';
-  bmv_dt_settings = local('get', 'bmv_user_settings') ? bmf_update_settings('local', JSON.parse(local('get', 'bmv_user_settings'))) : bmv_settings.default;
+  bmv_dt_st = local('get', 'bmv_user_settings') ? bmf_update_settings('local', JSON.parse(local('get', 'bmv_user_settings'))) : bmv_settings.default;
 
   var list_wh = wh.replace(/\/page\/\d+/, '').split('/');
   bmv_current = list_wh.length > 1 ? list_wh[1] : 'latest';
-  bmv_chk_query = wh.indexOf('query=') != -1 ? true : false; // if search page has "?query="
+  bmv_chk_query = wh.includes('query=') ? true : false; // if search page has "?query="
   bmv_chk_nav = bmv_current.search(/latest|search/i) != -1 ? true : false; //page navigation
 
   if (is_mobile) document.documentElement.classList.add('mobile');
@@ -3873,12 +4088,12 @@ function bmf_get_fragment() {
   console.log(`page: ${bmv_current}`);
 
   // page must have "slug"
-  if (bmv_current == 'series'|| bmv_current == 'chapter') {
+  if (bmv_current == 'series' || bmv_current == 'chapter') {
     if (list_wh[2] && list_wh[2] != '') {
       bmv_prm_slug = list_wh[2];
     } else {
       if (bmv_current == 'series') {
-        wl.hash = bmv_series_list;
+        wl.hash = bmv_sr_list;
       } else {
         wl.hash = '#/latest';
       }
@@ -3886,16 +4101,18 @@ function bmf_get_fragment() {
     }
   }
 
-  if (bmv_current == 'search' && list_wh[2] && list_wh[2] != '') bmv_prm_slug = list_wh[2];
-
   if (bmv_current == 'chapter' && list_wh[3] && list_wh[3] != '') {
     bmv_prm_chapter = list_wh[3].match(/([^\/#\?]+)/)[1];
-    if (list_wh[4]) bmv_prm_chapter += '&'+ decodeURIComponent(list_wh[4]); //url
+    if (list_wh[4]) bmv_prm_chapter += '&'+ decodeURIComponent(list_wh[4]); //url= or titleNo=
     window.onunload = function() { window.scrollTo(0,0); }; //prevent browsers auto scroll on reload/refresh
   }
 
-  if (bmv_current == 'search' && !bmv_prm_slug) { //advanced search without query or params
-    bmf_build_wait('direct/search');
+  if (bmv_current == 'search' && urls(whref).search == '') { //search without query or params
+    if (bmv_dt_st.source.site == 'webtoons') {
+      wl.hash = bmv_sr_list;
+    } else {
+      bmf_build_wait('direct/search');
+    }
   } else if (bmv_current == 'contact') {
     bmf_build_wait('direct/contact');
   } else {
@@ -3905,19 +4122,30 @@ function bmf_get_fragment() {
 
 // #===========================================================================================#
 
-function bmf_fbase_slug(note, data, callback, id) {
+function bmf_fbase_slug(note, data, callback, bkp) {
   if (fbase_login) {
-    var f_path = bmf_fbase_path(`series/${data.slug}`);
-    bmf_fbase_db_check(note +'/bookmark/slug', f_path, function(res) {
-      if (res) {
-        callback(data.slug);
+    var f_path = bmf_fbase_path('series/'+ data.slug);
+
+    // check duplicate id
+    bmf_fbase_db_get(note +'/bookmark/duplicate', f_path +'/duplicate_id', function(dp) {
+      if (dp.exists()) {
+        bmf_fbase_slug(note, {"slug": dp.val()}, callback, data.slug);
       } else {
-        var slug = 'title' in data && data.title.search(/\(remake\)/i) != -1 ? data.slug : id;
-        if (slug) {
-          callback(slug);
-        } else {
-          bmf_fbase_slug(note, {"slug": bmf_get_id(data.title)}, callback, data.slug);
-        }
+        // get "slug" from series, id or title
+        bmf_fbase_db_check(note +'/bookmark/slug', f_path, function(res) {
+          if (res) {
+            if (bkp && data.slug != bkp) bmv_chk_dp = true;
+            callback(data.slug);
+          } else {
+            var slug = 'title' in data && data.title.search(/\(remake\)/i) != -1 ? data.slug : bkp;
+            if (slug) {
+              if (bkp && data.slug != bkp) bmv_chk_dp = true;
+              callback(slug);
+            } else {
+              bmf_fbase_slug(note, {"slug": bmf_get_id(data.title)}, callback, data.slug);
+            }
+          }
+        });
       }
     });
   } else {
@@ -3928,7 +4156,7 @@ function bmf_fbase_slug(note, data, callback, id) {
 function bmf_fbase_backup() {
   if (!cookies.get('fbase_backup')) {
     bmf_loadXMLDoc({note:`xhr/${bmv_current}/backup`}, `${api_path}/firebase/backup.php?tz=${encodeURIComponent(timezone)}&uid=${fbase_user.uid}`, function(n, data) {
-      if (data.code != 200 || data.response.indexOf('Error:') != -1) {
+      if (data.code != 200 || data.response.includes('Error:')) {
         if (data.code == 200) console.error(data.response);
         alert(data.response);
       } else {
@@ -3993,7 +4221,8 @@ function bmf_fbase_gen(info, data) {
         type: data.detail.type,
         status: data.detail.status.replace(/berjalan|on-going/i, 'ongoing').replace(/on-hold/i, 'hiatus').replace(/tamat|end/i, 'completed').toLowerCase(),
         genre: data.detail.genre.toLowerCase(),
-        cover: data.cover
+        cover: data.cover,
+        source: bmv_dt_st.source.site
       };
       if (g_set) g_data['bm_added'] = new Date().getTime();
     }
@@ -4022,7 +4251,7 @@ function bmf_fbase_gen(info, data) {
 }
 
 function bmf_fbase_storage_delete(uid, callback) {
-  var fileArr = [uid + '-profile', uid + '-database.json'];
+  var fileArr = [uid +'-profile', uid +'-database.json'];
   var deletePromises = [];
 
   fileArr.forEach(function(item) {
@@ -4034,10 +4263,10 @@ function bmf_fbase_storage_delete(uid, callback) {
       })
       .catch(function(error) {
         if (error.code == 'storage/object-not-found') {
-          // console.warn('Firebase bmf_fbase_storage_delete: Item not found - ' + item);
+          // console.warn('Firebase bmf_fbase_storage_delete: Item not found - '+ item);
         } else {
-          console.error('!! Error: Firebase bmf_fbase_storage_delete (getMetadata), code: ' + error.code + ', message: ' + error.message);
-          alert('!! Error: Firebase bmf_fbase_storage_delete (getMetadata)\n' + error.message);
+          console.error('!! Error: Firebase bmf_fbase_storage_delete (getMetadata), code: '+ error.code +', message: '+ error.message);
+          alert('!! Error: Firebase bmf_fbase_storage_delete (getMetadata)\n'+ error.message);
         }
       });
   });
@@ -4134,8 +4363,8 @@ function bmf_fbase_observer() {
         bmv_max_hv = res.val()['\x76\x69\x73\x69\x74\x65\x64'];
       });
       bmf_fbase_db_get('observer/settings', bmf_fbase_path('settings'), function(res) {
-        bmv_dt_settings = res.exists() ? bmf_update_settings('observer/database', res.val()) : bmf_update_settings('observer/new_member', bmv_settings.default);
-        var local_settings = Object.assign({}, bmv_dt_settings);
+        bmv_dt_st = res.exists() ? bmf_update_settings('observer/database', res.val()) : bmf_update_settings('observer/new_member', bmv_settings.default);
+        var local_settings = Object.assign({}, bmv_dt_st);
         local_settings.from = 'local';
         local('set', 'bmv_user_settings', JSON.stringify(local_settings));
       });
@@ -4178,23 +4407,24 @@ function bmf_fbase_check() {
 // #===========================================================================================#
 
 // note: prm = param, dt = data, el = element
-var wh, wd, bmv_current, bmv_zoom_id, bmv_max_bmhs, bmv_max_hv, bmv_homepage, bmv_url_api, bmv_connection, bmv_page_type, bmv_mnotif_timeout;
+var wh, whref, bmv_current, bmv_zoom_id, bmv_max_bmhs, bmv_max_hv, bmv_homepage, bmv_url_api, bmv_connection, bmv_mnotif_timeout;
+var bmv_page_type, bmv_page_loaded, bmv_page_num;
 var bmv_prm_slug, bmv_prm_chapter;
-var bmv_page_loaded, bmv_chk_query, bmv_chk_nav, bmv_chk_cdn, bmv_chk_gi, bmv_chk_pause, bmv_chk_from, bmv_chk_lazy;
+var bmv_chk_query, bmv_chk_nav, bmv_chk_cdn, bmv_chk_gi, bmv_chk_pause, bmv_chk_from, bmv_chk_lazy, bmv_chk_dp;
 var bmv_loaded_img, bmv_load_cdn, bmv_load_gi;
-var bmv_dt_latest, bmv_dt_search, bmv_dt_series, bmv_dt_chapter, bmv_dt_bmhs, bmv_dt_error, bmv_dt_settings, bmv_dt_delete, bmv_dt_lazy;
-var bmhs_arr, bmhs_current, bmhs_length;
+var bmv_dt_latest, bmv_dt_search, bmv_dt_series, bmv_dt_chapter, bmv_dt_bmhs, bmv_dt_dplct, bmv_dt_error, bmv_dt_st, bmv_dt_delete, bmv_dt_lazy;
+var bmhs_arr, bmhs_current, bmhs_length, bmhs_query;
 var bmv_el_post, bmv_el_result, bmv_el_images;
 var bmv_str_cdn, bmv_str_gi, bmv_str_cdn_url;
-var bmv_lazy_error, bmv_lazy_skip, bmv_lazy_referer;
+var bmv_lz_error, bmv_lz_skip, bmv_lz_referer;
 var bmv_config = bakomon_config || {};
 var bmv_start = false;
 var bmhs_max = 12;
 var bmhs_nav_max = 3; //min = 3
-var bmv_series_list = '#/search/?params=default';
+var bmv_sr_list = '#/search/?params=default';
 var bmv_half_screen = Math.floor((window.screen.height / 2) + 30);
 var bmv_zoom = local('get', 'bmv_zoom') ? JSON.parse(local('get', 'bmv_zoom')) : {};
-var bmv_zm_size = {"manga": 800, "manhua": 700, "manhwa": 500};
+var bmv_zm_size = {"manga": 800, "manhua": 700, "manhwa": 500, "webtoon": 500};
 var bmv_rgx_cdn = /((?:(?:i\d+|cdn|img)\.)?(wp|statically|image(?:simple|cdn)|img)\.(?:com?|io|app|gs)\/(?:[^\.]+\/)?)/i;
 var bmv_rgx_gi = /\/([swh]\d+)(?:-[\w]+[^\/]*)?\/|=([swh]\d+).*/i;
 var bmv_genres = ['4-koma','action','adult','adventure','comedy','cooking','crime','demons','doujinshi','drama','ecchi','fantasy','game','ghosts','gore','harem','historical','horror','isekai','josei','kingdom','loli','magic','magical-girls','martial-arts','mature','mecha','medical','military','monster-girls','monsters','music','mystery','one-shot','parody','philosophical','police','post-apocalyptic','psychological','reincarnation','revenge','romance','samurai','school','school-life','sci-fi','seinen','shotacon','shoujo','shounen','slice-of-life','sports','super-power','superhero','supernatural','survival','system','thriller','tragedy','vampires','video-games','villainess','webtoons','wuxia'];
@@ -4240,11 +4470,11 @@ var fbase_config = bmv_config.fbase || {
 var bmv_settings = {
   "direction": true,
   "remove_statically": false,
-  "default": { //bmv_dt_settings
+  "default": { //bmv_dt_st
     "from": "default",
     "source": {
       "type": "themesia",
-      "site": "mangatale"
+      "site": "ikiru"
     },
     "sr_copy": true,
     "sr_list": true,
@@ -4257,7 +4487,7 @@ var bmv_settings = {
     "hs_stop": false,
     "img_resize": false,
     "resize_quality": 50,
-    "ch_url": false,
+    "ch_url": true,
     "cache": 30,
     "link": "search, chapter-img, bookmark, history"
   },
@@ -4270,25 +4500,17 @@ var bmv_settings = {
       "type": "themesia",
       "site": "tukangkomik"
     },
-    "mangatale": {
+    "ikiru": {
       "type": "themesia",
-      "site": "mangatale"
+      "site": "ikiru"
     },
     "maid": {
       "type": "koidezign",
       "site": "maid"
     },
-    "komikindo": {
+    "komiksin": {
       "type": "themesia",
-      "site": "komikindo"
-    },
-    "mgkomik": {
-      "type": "madara",
-      "site": "mgkomik"
-    },
-    "shinigami": {
-      "type": "madara",
-      "site": "shinigami"
+      "site": "komiksin"
     },
     "kiryuu": {
       "type": "themesia",
@@ -4306,16 +4528,46 @@ var bmv_settings = {
       "type": "madara",
       "site": "klikmanga"
     },
+    "komiknesia": {
+      "type": "themesia",
+      "site": "komiknesia"
+    },
+    "komiklovers": {
+      "type": "themesia",
+      "site": "komiklovers"
+    },
+    "webtoons": {
+      "type": "none",
+      "site": "webtoons",
+      "note": "originals"
+    },
+    "komiku": {
+      "type": "none",
+      "site": "komiku"
+    },
+    "mgkomik": {
+      "type": "madara",
+      "site": "mgkomik"
+    },
+    "shinigami": {
+      "type": "madara",
+      "site": "shinigami"
+    },
     "leviatanscans": {
       "type": "madara",
       "site": "leviatanscans",
       "lang": "en"
     },
-    "reaperscans": {
+    "reaper_scans": {
       "type": "themesia",
-      "site": "reaperscans",
+      "site": "reaper_scans",
       "lang": "en"
-    }
+    },
+    "manhuaus": {
+      "type": "madara",
+      "site": "manhuaus",
+      "lang": "en"
+    },
   },
   "tier": {
     "pro": {

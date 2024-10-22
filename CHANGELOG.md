@@ -200,3 +200,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 - `neumanga.net` (koidezign)
+
+
+## [1.6] - 2024-10-22
+
+### Fixed
+
+- image-resize: failed to detect image MIME type
+- lazyload: `bmv_lazy_referer` is null on bmhs page
+- api: `Http` class return new instances instead of overwriting
+- api: `DOMDocument::loadHTML` treats the string as ISO-8859-1
+- api: `$title` regexp escape
+- `apple-mobile-web-app-capable` is [deprecated](https://web.dev/learn/pwa/web-app-manifest#designing_your_pwa_experience)
+- numerous bug fixes and improvements.
+
+### Added
+
+- css: `.bg3`
+- compatible with PHP 8.x
+- merge duplicate series on `bmhs`
+- resize and adjust image quality with [IMGPA](https://github.com/sekedus/imgpa)
+- disable directory listing with `.htaccess`
+- new source `komiknesia.xyz` (themesia)
+- new source `komiklovers.com` (themesia)
+- new source `komiku.id`
+- new source `webtoons.com`
+- new source `ikiru.id` (themesia)
+- new source `manhuaus.com` (madara)
+
+### Changed
+
+- UAParser.js source from [`jsdelivr`](https://www.jsdelivr.com/package/npm/ua-parser-js) to [`cdnjs`](https://cdnjs.com/libraries/UAParser.js)
+- Update regexp: `chapter`
+- string `indexOf` to `includes`
+- api: `reaper-scans.com` (themesia)
+- api: `leviatanscans.com` (madara)
+- `pojokmanga.id` to `pojokmanga.org`
+- `komikcast.lol` to `komikcast.cz`
+- `shinigami.moe` to `shinigami.ae`
+- `kiryuu.id` to `kiryuu.org`
+- `komikindo.co` to `komiksin.co`
+
+### Removed
+
+- `mangatale.co` (themesia)

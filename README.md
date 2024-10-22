@@ -1,6 +1,6 @@
 # Bakomon (Baca Komik Online)
 
-[![GitHub repo size](https://img.shields.io/github/repo-size/bakomon/web?label=Size)](https://github.com/bakomon/web) [![CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
+[![GitHub repo size](https://img.shields.io/github/repo-size/bakomon/web?label=Size)](https://github.com/bakomon/web) [![CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](https://github.com/bakomon/web/blob/main/LICENSE-CC-BY-NC-SA)
 
 Bakomon is simple tool which allows you to scrap manga/manhwa/manhua from online comic readers.
 
