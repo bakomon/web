@@ -10,26 +10,26 @@ class Route
     }
 
     // Delete files older than a given age https://gist.github.com/tdebatty/9412259
-    private function delete_older_than($dir, $max_age) 
+    private function delete_older_than($dir, $max_age)
     {
         $list = array();
         $limit = time() - $max_age;
         $dir = realpath($dir);
-        
+
         if (!is_dir($dir)) return;
-        
+
         $dh = opendir($dir);
         if ($dh === false) return;
-        
+
         while (($file = readdir($dh)) !== false) {
           $file = $dir . '/' . $file;
           if (!is_file($file)) continue;
-          
+
           if (filemtime($file) < $limit) {
             $list[] = $file;
             unlink($file);
           }
-          
+
         }
         closedir($dh);
     }
@@ -38,7 +38,7 @@ class Route
     {
         http_response_code($data->status_code);
         $new_data = json_encode($data);
-        
+
         // https://stackoverflow.com/a/1678243/7598333
         if ($this->param_check('callback', $_GET)) :
             header('Content-Type: text/javascript; charset=utf8');
@@ -49,7 +49,7 @@ class Route
         endif;
     }
 
-    public function get($info = null, $callback, $target)
+    public function get($info, $callback, $target)
     {
         $day = 86400; //24 hours in seconds
         $path = __DIR__ . '/../../.cache/';

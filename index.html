@@ -23,9 +23,9 @@
 <meta name="twitter:card" content="summary_large_image"/>
 <meta name="twitter:title" content="Bakomon – Baca Komik Bahasa Indonesia Online"/>
 <!-- Mobile Properties -->
+<meta name="mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#4774a7"/>
 <meta name="msapplication-navbutton-color" content="#4774a7"/>
-<meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="#4774a7" />
 <!-- Mobile Favicons -->
 <meta name="application-name" content="Bakomon" />
@@ -48,7 +48,7 @@
 <div class="atoz">Loading</div>
 <noscript><div class="no-js center">Maaf, situs ini tidak bisa bekerja tanpa javascript, mohon <a href="https://www.enablejavascript.io/id" rel="nofollow" target="_blank" title="Enable Javascript">aktifkan javascript</a> di browser Anda. Terima kasih&#160;&#160;^_^</div></noscript>
 <div id="check-point"></div>
-<script src="https://cdn.jsdelivr.net/npm/ua-parser-js@1.0.33/src/ua-parser.min.js" type="text/javascript"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/UAParser.js/1.0.33/ua-parser.min.js" type="text/javascript"></script>
 <script src="./tools/es6-browser-supports.js" type="text/javascript"></script>
 <!-- <script type="text/javascript">self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;</script> --><!-- https://firebase.google.com/docs/app-check/web/debug-provider#web-namespaced-api -->
 <script defer src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js" type="text/javascript"></script>
@@ -57,9 +57,10 @@
 <script defer src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js" type="text/javascript"></script>
 <!-- <script defer src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js" type="text/javascript"></script> -->
 <script type="text/javascript">
-// api, imageoptim, logo, fbase
+// api, resize, imageoptim, logo, fbase, contact
 var bakomon_config = {
   api: localStorage.getItem('bmv_api') || null,
+  resize: localStorage.getItem('bmv_resize') || null,
   imageoptim: "YOUR_IMAGEOPTIM_USERNAME",
   fbase: {
     apiKey: "API_KEY",

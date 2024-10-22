@@ -4,6 +4,7 @@ require_once '../api/Allowed.php';
 
 use \Api\Allowed;
 
+// Prevent direct url access
 if (!(new Allowed)->check()) {
   header('HTTP/1.0 403 Forbidden', TRUE, 403);
   exit;
