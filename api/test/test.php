@@ -16,27 +16,37 @@ if (!(new Allowed)->check()) {
 
 $source_link = $_GET['url'];
 
-$source_xml = Http::load($source_link, ['headers' => ['Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8']]);
-if (!$source_xml->isSuccess()) {
+$user_agent = [ //chrome
+  'desktop' => 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+  'mobile' => 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.6478.186 Mobile Safari/537.36',
+];
+
+$headers = [
+  'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+  'User-Agent' => $user_agent[$_GET['mobile'] == 'true' ? 'mobile' : 'desktop'],
+];
+
+$source_xml = Http::load($source_link, ['headers' => $headers]);
+if (!$source_xml->isSuccess() && $_GET['bypass'] == 'true') {
   if ($source_xml->isBlocked()) $source_xml = Http::bypass($source_link);
 }
 
-$status_code = $source_xml::$status;
+$status_code = $source_xml->status;
 
-if ($source_xml::$error) {
+if ($source_xml->error) {
   $data = array(
     'status_code' => $status_code,
     'url' => $source_link,
-    'error' => $source_xml::$error,
+    'error' => $source_xml->error,
   );
 } else {
   $data = array(
     'status_code' => $status_code,
     'url' => $source_link,
-    'cache' => $source_xml::$cache,
-    'bypass' => $source_xml::$bypass,
-    'domain_change' => $source_xml::$link,
-    'headers' => $source_xml::$headers,
+    'cache' => $source_xml->cache,
+    'bypass' => $source_xml->bypass,
+    'domain_change' => $source_xml->link,
+    'headers' => $source_xml->headers,
     'body' => $source_xml->response(),
   );
 }

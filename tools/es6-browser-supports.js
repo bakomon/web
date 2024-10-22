@@ -17,6 +17,7 @@ var MinimumForES6 = {
   "Blink": 51,
   "EdgeHTML": 15,
   "Gecko": 54,
+  "Goanna": 2,
   "WebKit": 602
 };
 
@@ -27,7 +28,7 @@ window.addEventListener('DOMContentLoaded', function() {
   window['isES6'] = supportsES6(ua_result.engine);
 
   if (!window.isES6) {
-    var browsers = '<div class="t_perfect" style="height:95vh;"><div class="tp_content t_center layer"><p><b>Unsupported browser!</b></p><div class="new_line"></div><p>Please ';
+    var browsers = '<div class="t_perfect" style="height:95vh;"><div class="tp_content t_center layer"><p><h1>Unsupported Browser!</h1></p><div class="new_line"></div><p>Please ';
     if (ua_result.engine.name in MinimumForES6) {
       browsers += 'upgrade your browser to latest version.</p>';
     } else {

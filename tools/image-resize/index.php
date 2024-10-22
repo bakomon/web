@@ -41,12 +41,12 @@ $router->get('/', function() {
   $img_res = image_ref($img_url, $_GET);
 
   // Check file size and type, if everything is OK, download it.
-  if (!check_file_ok($img_url, $img_res->headers)) {
+  if (!check_file_ok($img_res)) {
     show_error('Input file should be an image, and the size should not larger than 5MB.');
     return;
   }
 
-  $folder_path = './.temp-files/';
+  $folder_path = '../.temp-files/';
   if (!is_dir($folder_path)) mkdir($folder_path, 0777, true);
 
   $img_parse = parse_url($img_url);
@@ -54,16 +54,17 @@ $router->get('/', function() {
   $img_path = $folder_path . $img_info['basename'];
   file_put_contents($img_path, $img_res->response);
 
+  // Resize image to fit size.
   try {
     $file_path = $img_path;
-    $size = getimagesizefromstring($img_res->response);
+    $size = $img_res->size;
     if ($width && $size[0] > (int)$width || $height && $size[1] > (int)$height) {
       $image = new ImageResize($img_path);
-      if($width && $height){
+      if ($width && $height){
         $image->resizeToBestFit((int)$width, (int)$height, $allow_enlarge = TRUE);
       } else {
-        if($width) $image->resizeToWidth((int)$width, $allow_enlarge = TRUE);
-        if($height) $image->resizeToHeight((int)$height, $allow_enlarge = TRUE);
+        if ($width) $image->resizeToWidth((int)$width, $allow_enlarge = TRUE);
+        if ($height) $image->resizeToHeight((int)$height, $allow_enlarge = TRUE);
       }
       $image->save($img_path);
 
@@ -72,20 +73,15 @@ $router->get('/', function() {
       $cache_path = $folder_path . $img_info['extension'] . '-' . $cache_name. '.json';
 
       if ($img_info['extension'] != 'webp') {
-        /*
-        expiration:
-        - resmush.it = 300 (5 minutes)
-        - wsrv.nl = 604800 (7 days)
-        */
-        $cache = cache_file($cache_path, 300);
-        $resmush = $cache ? $cache : resmushit($img_path, (int)$quality);
+        $cache = cache_file($cache_path, 1800);
+        $resmush = $cache ? $cache : resmushit($img_path, (int)$quality); //5 minutes (default)
         if (isset($resmush['error'])) {
           show_error('reSmush: ' . $resmush['error_long'], $img_url);
         } else {
           file_put_contents($cache_path, json_encode($resmush));
           $res_url = 'https://wsrv.nl/?url=' . $resmush['dest'];
           if (isset($img_parse['fragment'])) $res_url .= '#' . $img_parse['fragment'];
-          show_success($img_res, $res_url, pathinfo($resmush['dest'], PATHINFO_BASENAME));
+          show_success($img_res, $res_url, pathinfo($resmush['dest']), $size);
         }
       } else {
         $cache = cache_file($cache_path, 1800);
@@ -94,13 +90,13 @@ $router->get('/', function() {
           file_put_contents($cache_path, json_encode($imgbb));
           $res_url = $imgbb['data']['display_url'];
           if (isset($img_parse['fragment'])) $res_url .= '#' . $img_parse['fragment'];
-          show_success($img_res, $res_url, $img_info['basename']);
+          show_success($img_res, $res_url, $img_info, $size);
         } else {
           show_error('ImgBB: ' . $imgbb['message'], $img_url);
         }
       }
     } else {
-      show_success($img_res, $img_url, $img_info['basename']);
+      show_success($img_res, $img_url, $img_info, $size);
     }
     unlink($file_path);
 
@@ -125,12 +121,12 @@ $router->post('/', function() {
   $img_res = image_ref($img_url, $img_data);
 
   // Check file size and type, if everything is OK, download it.
-  if (!check_file_ok($img_url, $img_res->headers)) {
+  if (!check_file_ok($img_res)) {
     show_error('Input file should be an image, and the size should not larger than 5MB.');
     return;
   }
 
-  $folder_path = './.temp_files/';
+  $folder_path = '../.temp_files/';
   if (!is_dir($folder_path)) mkdir($folder_path, 0777, true);
 
   $img_parse = parse_url($img_url);
@@ -155,14 +151,14 @@ $router->post('/', function() {
     }
 
     $file_path = $img_path;
-    $size = getimagesizefromstring($img_res->response);
+    $size = $img_res->size;
     if ($width && $size[0] > (int)$width || $height && $size[1] > (int)$height) {
       $image = new ImageResize($img_path);
-      if($width && $height){
+      if ($width && $height){
         $image->resizeToBestFit((int)$width, (int)$height, $allow_enlarge = TRUE);
       } else {
-        if($width) $image->resizeToWidth((int)$width, $allow_enlarge = TRUE);
-        if($height) $image->resizeToHeight((int)$height, $allow_enlarge = TRUE);
+        if ($width) $image->resizeToWidth((int)$width, $allow_enlarge = TRUE);
+        if ($height) $image->resizeToHeight((int)$height, $allow_enlarge = TRUE);
       }
       $image->save($img_path);
 
@@ -171,20 +167,15 @@ $router->post('/', function() {
       $cache_path = $folder_path . $img_info['extension'] . '-' . $cache_name. '.json';
 
       if ($img_info['extension'] != 'webp') {
-        /*
-        expiration:
-        - resmush.it = 300 (5 minutes)
-        - wsrv.nl = 604800 (7 days)
-        */
-        $cache = cache_file($cache_path, 300);
-        $resmush = $cache ? $cache : resmushit($img_path, (int)$quality);
+        $cache = cache_file($cache_path, 1800);
+        $resmush = $cache ? $cache : resmushit($img_path, (int)$quality); //5 minutes (default)
         if (isset($resmush['error'])) {
           show_error('reSmush: ' . $resmush['error_long'], $img_url);
         } else {
           file_put_contents($cache_path, json_encode($resmush));
           $res_url = 'https://wsrv.nl/?url=' . $resmush['dest'];
           if (isset($img_parse['fragment'])) $res_url .= '#' . $img_parse['fragment'];
-          show_success($img_res, $res_url, pathinfo($resmush['dest'], PATHINFO_BASENAME));
+          show_success($img_res, $res_url, pathinfo($resmush['dest']), $size);
         }
       } else {
         $cache = cache_file($cache_path, 1800);
@@ -193,13 +184,13 @@ $router->post('/', function() {
           file_put_contents($cache_path, json_encode($imgbb));
           $res_url = $imgbb['data']['display_url'];
           if (isset($img_parse['fragment'])) $res_url .= '#' . $img_parse['fragment'];
-          show_success($img_res, $res_url, $img_info['basename']);
+          show_success($img_res, $res_url, $img_info, $size);
         } else {
           show_error('ImgBB: ' . $imgbb['message'], $img_url);
         }
       }
     } else {
-      show_success($img_res, $img_url, $img_info['basename']);
+      show_success($img_res, $img_url, $img_info, $size);
     }
     unlink($file_path);
 
@@ -235,7 +226,7 @@ function parse_header($headers) {
       $head[ strtolower(trim($t[0])) ] = trim( $t[1] );
     } else {
       $head[] = $v;
-      if( preg_match("#HTTP/[0-9\.]+\s+([0-9]+)#",$v, $out) ) $head['reponse_code'] = intval( $out[1] );
+      if ( preg_match("#HTTP/[0-9\.]+\s+([0-9]+)#",$v, $out) ) $head['reponse_code'] = intval( $out[1] );
     }
   }
   return $head;
@@ -262,6 +253,7 @@ function image_ref($url, $data) {
   return (object) [
     "headers" => parse_header($headers),
     "response" => $response,
+    "size" => getimagesizefromstring($response),
   ];
 }
 
@@ -316,10 +308,15 @@ function cache_file($name, $time) {
  *
  * @param string $data The success data which should be displayed.
  */
-function show_success($data, $url, $name) {
+function show_success($data, $url, $info, $size) {
   $result = [
     'status' => 'success',
-    'filename' => $name,
+    'filename' => $info['basename'],
+    'type' => $info['extension'],
+    'size' => [
+      'width' => $size[0],
+      'height' => $size[1],
+    ],
     'img_url' => $url,
     // 'img_base64' => 'data:' . $data->headers['content-type'] . ';base64,' . base64_encode($data->response),
   ];
@@ -349,7 +346,9 @@ function show_error($message, $url = null) {
  * @param string $url The url of image.
  * @param array $headers List of response headers.
  */
-function check_file_ok($url, $headers) {
+function check_file_ok($data) {
+  $headers = $data->headers;
+
   // If response code not 200, return RESPONSE CODE
   if ($headers['reponse_code'] != '200') {
     show_error(array_values($headers)[0]);
@@ -357,7 +356,7 @@ function check_file_ok($url, $headers) {
   }
 
   $file_size = isset($headers['content-length']) ? $headers['content-length'] : -1;
-  $file_type = $headers['content-type'];
+  $file_type = $data->size !== false ? $data->size['mime'] : $headers['content-type'];
 
   // If the file more than 5MB, return FALSE
   if (!$file_size || $file_size > 5000000) {
