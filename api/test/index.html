@@ -8,9 +8,9 @@
 <title>Web Scraping Test</title>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <!-- Mobile Properties -->
+<meta name="mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#4774a7"/>
 <meta name="msapplication-navbutton-color" content="#4774a7"/>
-<meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="#4774a7" />
 <!-- Mobile Favicons -->
 <meta name="application-name" content="Web Scraping Test" />
@@ -26,7 +26,7 @@
   --border: #b0bec5;
 }
 
-/* Custom Scrollbar */
+/* Scrollbar */
 ::-webkit-scrollbar{width:15px;}
 ::-webkit-scrollbar-track{background:#1f1f1f;}
 ::-webkit-scrollbar-thumb{background:#333;}
@@ -108,6 +108,11 @@ a.btn{color:var(--color3);}
 .no_items{display:none;}
 .hidden_items{visibility:hidden;opacity:0;margin:0;padding:0;max-height:0;max-width:0;overflow:hidden;text-indent:-9999px;}
 
+/* Menu */
+.menu{margin:-20px 0 20px;}
+.menu a{margin:0 10px;}
+.menu a[target="_blank"]::after{content:'\2197';}
+
 /* Main */
 .main{margin:15px auto;position:relative;}
 .main .source{position:absolute;top:0;right:0;line-height:0;padding-right:15px;}
@@ -120,7 +125,7 @@ a.btn{color:var(--color3);}
 .post-content .scrap-submit{padding:20px 0 5px;}
 .post-content .scrap-submit .cbox label{margin-left:20px;}
 .post-content .scrap-submit .cbox input{margin-right:5px;}
-.post-content .scrap-result{margin-top:15px;}
+.post-content .scrap-result .result-url{margin-top:15px;}
 .post-content .scrap-result .result-url a{word-wrap:break-word;}
 .post-content .scrap-result .result-code{margin:15px 0 25px;}
 .post-content .scrap-result .result-code .result-bottom{padding-top:10px;font-size:200%;}
@@ -183,19 +188,27 @@ a.btn{color:var(--color3);}
 
 <div class="main max layer ">
   <div class="post-wrapper">
+    <div class="menu flex f_right">
+      <a href="../../" target="_blank">Home</a>
+    </div>
     <div class="post-header t_center"><h1 class="title"><a href="./">Web Scraping Test</a></h1></div>
     <div class="post-content bg2 layer radius">
       <input class="scrap-url full" type="text" placeholder="URL">
       <div class="scrap-submit flex_wrap f_middle">
         <button type="submit" class="submit btn f_grow">Check</button>
-        <div class="cbox flex f_center">
-          <label class="bypass flex f_middle"><input type="checkbox"/>bypass</label>
+        <div class="cbox flex_wrap f_center">
+          <label class="curl flex f_middle"><input type="checkbox"/>cURL</label>
+          <label class="bypass flex f_middle"><input type="checkbox"/>bypass/proxy</label>
           <label class="mobile flex f_middle"><input type="checkbox"/>mobile</label>
         </div>
       </div>
       <div class="scrap-result t_center no_items">
-        <div class="result-url">
+        <div class="result-url source-url">
           <div class="result-top">Url:</div>
+          <div class="result-bottom"><a href="" rel="nofollow" target="_blank"></a></div>
+        </div>
+        <div class="result-url bypass-url no_items">
+          <div class="result-top">Bypass Url:</div>
           <div class="result-bottom"><a href="" rel="nofollow" target="_blank"></a></div>
         </div>
         <div class="result-code">
@@ -266,20 +279,25 @@ function loadXMLDoc(url, callback, info = {}) {
 function scrap_show(data) {
   el('.post-content').classList.remove('loading', 'loge');
   if ('error' in data && data.response == '') {
-    el('.result-url a').href = wst_url;
-    el('.result-url a').innerHTML = wst_url;
+    el('.source-url a').href = wv_url;
+    el('.source-url a').innerHTML = wv_url;
     el('.result-code .code strong').innerHTML = data.code;
     el('.result-xml textarea').value = data.error;
   } else {
-    window['wst_data'] = JSON.parse(data.response);
-    // console.log('wst_data:', wst_data);
-    var err = 'error' in wst_data ? wst_data.error : false;
-    el('.result-url a').href = wst_data.url.search(/(https?:)?\/\//) == -1 ? ('//'+ wst_data.url) : wst_data.url;
-    el('.result-url a').innerHTML = wst_data.url;
-    el('.result-code .code strong').innerHTML = wst_data.status_code;
-    el('.result-code .bypass').innerHTML = !err && wst_data.bypass ? ' (bypass)' : '';
-    if (wst_data.status_code == 200) el('.result-code .result-bottom').classList.add('result-ok');
-    el('.result-xml textarea').value = err ? ('❗❗ Error:\n\n'+ err.message +' in '+ err.file +' on line '+ err.line) : wst_data.body;
+    window['wv_data'] = JSON.parse(data.response);
+    // console.log('wv_data:', wv_data);
+    var err = 'error' in wv_data ? wv_data.error : false;
+    el('.source-url a').href = wv_data.url.search(/^(https?:)?\/\//) == -1 ? ('//'+ wv_data.url) : wv_data.url;
+    el('.source-url a').innerHTML = wv_data.url;
+    if (we_bypass.checked && 'bypass_url' in wv_data) {
+      el('.bypass-url a').href = wv_data.bypass_url;
+      el('.bypass-url a').innerHTML = wv_data.bypass_url;
+      el('.bypass-url').classList.remove('no_items');
+    }
+    el('.result-code .code strong').innerHTML = wv_data.status_code;
+    el('.result-code .bypass').innerHTML = !err && wv_data.bypass ? ' (bypass)' : '';
+    if (wv_data.status_code == 200) el('.result-code .result-bottom').classList.add('result-ok');
+    el('.result-xml textarea').value = err ? ('❗❗ Error:\n\n'+ err.message +' in '+ err.file +' on line '+ err.line) : wv_data.body;
   }
   el('.scrap-result').classList.remove('no_items');
   el('.result-xml textarea').scrollTop = 0;
@@ -287,24 +305,36 @@ function scrap_show(data) {
 
 // #===========================================================================================#
 
-var wst_data, wst_url;
+var wv_data, wv_url;
+var we_curl = el('.scrap-submit .curl input');
+var we_bypass = el('.scrap-submit .bypass input');
+
+we_curl.addEventListener('change', function() {
+  if (this.checked) {
+    we_bypass.checked = false;
+    we_bypass.disabled = true;
+  } else {
+    we_bypass.disabled = false;
+  }
+});
 
 el('.scrap-submit .submit').addEventListener('click', function() {
-  wst_url = el('.scrap-url').value;
-  if (wst_url == '') {
+  wv_url = el('.scrap-url').value;
+  if (wv_url == '') {
     el('.scrap-url').focus();
     return;
   }
-  if (wst_url.search(/^(https?|ftp):/) == -1) wst_url = 'http://'+ wst_url.replace(/^\/\//, '');
-  if (!isValidUrl(wst_url)) {
+  if (wv_url.search(/^(https?|ftp):/) == -1) wv_url = 'http://'+ wv_url.replace(/^\/\//, '');
+  if (!isValidUrl(wv_url)) {
     alert('Invalid URL');
     el('.scrap-url').select();
     return;
   }
   el('.post-content').classList.add('loading', 'loge');
   el('.scrap-result').classList.add('no_items');
+  el('.bypass-url').classList.add('no_items');
   el('.result-code .result-bottom').classList.remove('result-ok');
-  var url = './test.php?url='+ encodeURIComponent(wst_url) +'&bypass='+ el('.scrap-submit .bypass input').checked +'&mobile='+ el('.scrap-submit .mobile input').checked;
+  var url = './test.php?url='+ encodeURIComponent(wv_url) +'&curl='+ we_curl.checked +'&bypass='+ we_bypass.checked +'&mobile='+ el('.scrap-submit .mobile input').checked;
   loadXMLDoc(url, scrap_show);
 });
 
@@ -313,7 +343,7 @@ el('.result-xml .goto .to-top').addEventListener('click', function() { el('.resu
 el('.result-xml .goto .to-bottom').addEventListener('click', function() { el('.result-xml textarea').scrollTop = el('.result-xml textarea').scrollHeight; });
 
 document.addEventListener('keyup', function(e) {
-  if (e.code == 'Enter' || e.keyCode == 13) el('.scrap-submit').click();
+  if (e.code == 'Enter' || e.keyCode == 13) el('.scrap-submit button').click();
 });
 </script>
 </body>

@@ -42,8 +42,9 @@ window.addEventListener('DOMContentLoaded', function() {
       browsers += '<div class="new_line"></div><a href="https://brave.com/" target="_blank">Brave</a>';
       browsers += '<div class="new_line"></div><a href="https://vivaldi.com/" target="_blank">Vivaldi</a>';
       browsers += '<div class="new_line"></div><a href="https://www.ecosia.org/" target="_blank">Ecosia</a>';
+      browsers += '<div class="new_line"></div><a href="https://browser.yandex.com/?lang=en" target="_blank">Yandex Browser</a>';
       if (mobile && typeof ua_result.os.name !== 'undefined' && ua_result.os.name.search(/android/i) != -1) {
-        browsers += '<div class="new_line"></div><a href="https://play.google.com/store/apps/details?id=com.kiwibrowser.browser" target="_blank">Kiwi</a>';
+        browsers += '<div class="new_line"></div><a href="https://play.google.com/store/apps/details?id=site.mises.browser" target="_blank">Mises</a>';
         browsers += '<div class="new_line"></div><a href="https://play.google.com/store/apps/details?id=com.sec.android.app.sbrowser" target="_blank">Samsung Internet</a>';
         browsers += '<div class="new_line"></div><a href="https://play.google.com/store/apps/details?id=mark.via.gp" target="_blank">Via</a>';
       }

@@ -244,3 +244,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 - `mangatale.co` (themesia)
+
+
+## [1.7] - 2025-06-23
+
+### Fixed
+
+- domain change detection
+- api: webtoons search result
+- series: visible content shifts when an accordion is displayed
+- chapter: disqus identifier
+- bmhs: pagination on mobile
+- reSmush.it API: `user-agent and website address as referer in API request is mandatory`
+- numerous bug fixes and improvements.
+
+### Added
+
+- hQuery: igonore SSL certificate verification with `stream_socket_client`, [source](https://stackoverflow.com/a/43800970)
+- bypass `cloudflare` with [Cloudflare Proxy EX](https://github.com/1234567Yang/cf-proxy-ex)
+- `released` in series page
+- new source `lumoskomik.com` (madara)
+- new source `mangapark.net`
+- new source `softkomik.com`
+- new source `cosmictoon.ae` (themesia)
+- new source `manhwalist.com` (themesia)
+- new source `ainzscans.net` (themesia)
+- new source `soulscans.my.id` (themesia)
+- new source `mangasee123.com`
+- new source `comick.io`
+- new source `westmanga.fun` (themesia)
+- new source `komikstation.co` (themesia)
+
+### Changed
+
+- `l10n` on meta-tags
+- api: `pojokmanga.com` (madara)
+- api: `webtoons.com`
+- api: `reaper-scans.com` themesia to madara
+- `pojokmanga.org` to `pojokmanga.com`
+- `komikcast.lol` to `komikcast.com`
+- `kiryuu.id` to `kiryuu.co`
+- `klikmanga.id` to `klikmanga.com`
+- `tukangkomik.id` to `tukangkomik.com`
+- `bacakomik.net` to `bacakomik.me`
+- `mgkomik.id` to `mgkomik.my.id`
+- `komiksin.co` to `komiksin.ae`
+
+### Removed
+
+- `komiknesia.xyz` (themesia)
+- [Image Resize API](https://github.com/bakomon/web/tree/0a626ee9ba8e24723e0c06ed3f371618934f42bb/tools/image-resize)
+- Statically CDN

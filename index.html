@@ -50,37 +50,16 @@
 <div id="check-point"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/UAParser.js/1.0.33/ua-parser.min.js" type="text/javascript"></script>
 <script src="./tools/es6-browser-supports.js" type="text/javascript"></script>
-<!-- <script type="text/javascript">self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;</script> --><!-- https://firebase.google.com/docs/app-check/web/debug-provider#web-namespaced-api -->
+<!-- App Check debug & test provider - https://firebase.google.com/docs/app-check/web/debug-provider#web-namespaced-api -->
+<!-- <script type="text/javascript">self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;</script> -->
 <script defer src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js" type="text/javascript"></script>
 <script defer src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app-check.js" type="text/javascript"></script>
 <script defer src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js" type="text/javascript"></script>
 <script defer src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js" type="text/javascript"></script>
 <!-- <script defer src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js" type="text/javascript"></script> -->
 <script type="text/javascript">
-// api, resize, imageoptim, logo, fbase, contact
-var bakomon_config = {
-  api: localStorage.getItem('bmv_api') || null,
-  resize: localStorage.getItem('bmv_resize') || null,
-  imageoptim: "YOUR_IMAGEOPTIM_USERNAME",
-  fbase: {
-    apiKey: "API_KEY",
-    authDomain: "PROJECT_ID.firebaseapp.com",
-    databaseURL: "https://PROJECT_ID.firebaseio.com",
-    projectId: "PROJECT_ID",
-    storageBucket: "PROJECT_ID.appspot.com",
-    messagingSenderId: "SENDER_ID",
-    appId: "APP_ID",
-    measurementId: "G-MEASUREMENT_ID",
-  },
-  contact: {
-    formId: "GOOGLE_FORM_ID",
-    name: "NAME_ID",
-    email: "EMAIL_ID",
-    subject: "SUBJECT_ID",
-    message: "MESSAGE_ID",
-    response: "RESPONSE_ID"
-  }
-};
+// api, resize, disqus_shortname, imageoptim, logo, fbase, contact
+var bakomon_config = {};
 </script>
 <script defer src="./script.js" type="text/javascript"></script>
 </body>

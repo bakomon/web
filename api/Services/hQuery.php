@@ -429,7 +429,7 @@ class hQuery
      *  Save data to a cache file.
      *
      * @param  string   $fn   - cache filename
-     * @param  mixed    $cnt  - contents to be cache
+     * @param  mixed    $cnt  - contents to be cached
      * @param  array    $meta - OPTIONAL meta information related to contents.
      * @param  bool     $gzip - OPTIONAL if TRUE and gzip supported, store contents gzipped
      * @return int|bool On success, number of written bytes, FALSE on fail.
@@ -546,7 +546,7 @@ class hQuery
                     $ret = $r;
                 }
 
-                // filesize result is cache
+                // filesize result is cached
                 flock($f, LOCK_UN);
             }
             fclose($f);
@@ -819,7 +819,19 @@ class hQuery
         $errstr =
         $rsps   = '';
         $h      = $_rh      = null;
-        $fs     = @fsockopen($conhost, $port, $errno, $errstr, $timeout);
+
+        if (isset($options['ignore_ssl']) && $options['ignore_ssl'] === false) {
+            $context = stream_context_create([
+                'ssl' => [
+                    'verify_peer' => false,
+                    'verify_peer_name' => false
+                ]
+            ]);
+        } else {
+            $context = null;
+        }
+
+        $fs = @stream_socket_client($conhost . ':' . $port, $errno, $errstr, $timeout, STREAM_CLIENT_CONNECT, $context);
         if (!$fs) {
             throw new \Exception('unable to create socket "' . $conhost . ':' . $port . '" ' . $errstr, $errno);
         }
@@ -993,7 +1005,7 @@ class hQuery
             isset($options['decode']) && 'gzip' == $options['decode'] &&
             isset($_rh['CONTENT_ENCODING']) && 'gzip' == $_rh['CONTENT_ENCODING']
         ) {
-            $r = self::gzdecode($rsps);
+            $r = @self::gzdecode($rsps);
             if (false !== $r) {
                 unset($_rh['CONTENT_ENCODING']);
                 $rsps = $r;

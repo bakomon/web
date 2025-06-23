@@ -1,8 +1,12 @@
 <?php
 
+// Image Processing API
+
 require_once '../api/Allowed.php';
+require_once './curl.php';
 
 use \Api\Allowed;
+use Tools\cURL;
 
 // Prevent direct url access
 if (!(new Allowed)->check(['only_referer' => true])) {
@@ -198,55 +202,193 @@ function check_file_ok($data) {
 
 /**
  * Function for image optimization with reSmush.it API
+ * Note: user-agent and website address as referer is mandatory.
  *
  * @link https://resmush.it/api
  */
-function resmushit($file, $quality = 92) {
+function resmushit($file, $referer, $quality = 92) {
   $mime = mime_content_type($file);
   $name = pathinfo($file, PATHINFO_BASENAME);
-  $output = new CURLFile($file, $mime, $name);
-  $data = array(
-      'files' => $output,
-  );
+  $data = [
+    'files' => new CURLFile($file, $mime, $name),
+  ];
 
-  $ch = curl_init();
-  curl_setopt($ch, CURLOPT_URL, 'http://api.resmush.it/?qlty=' . $quality);
-  curl_setopt($ch, CURLOPT_POST,1);
-  curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-  curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
-  curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
-  $result = curl_exec($ch);
-  if (curl_errno($ch)) {
-     $result = curl_error($ch);
-  }
-  curl_close ($ch);
-  return json_decode($result, true);
+  $result = cURL::post('http://api.resmush.it/?qlty=' . $quality, [
+    'fields' => $data,
+    'useragent' => 'MyCustomUserAgent/1.0',
+    'referer' => $referer ?? 'https://example.com',
+  ]);
+
+  return json_decode($result::$source, true);
 }
 
 /**
- * Function for image upload (temporary) with ImgBB API
+ * Function for image upload (temporary) with ImgBB API (chevereto)
  *
  * @link https://api.imgbb.com/
  */
-function imgbb($file, $expiration) {
+function imgbb($file, $expiration = 1800) {
   $API_KEY = 'YOUR_IMGBB_APIKEY';
-  $image = base64_encode(file_get_contents($file));
-  $data = array(
-    'image' => $image,
+  $data = [
+    'image' => base64_encode(file_get_contents($file)),
     'expiration' => $expiration,
-  );
+  ];
 
-  $ch = curl_init();
-  curl_setopt($ch, CURLOPT_URL, 'https://api.imgbb.com/1/upload?key=' . $API_KEY);
-  curl_setopt($ch, CURLOPT_POST,1);
-  curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-  curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
-  $result = curl_exec($ch);
-  if (curl_errno($ch)) {
-     $result = curl_error($ch);
-  }
-  curl_close ($ch);
-  return json_decode($result, true);
+  $result = cURL::post('https://api.imgbb.com/1/upload?key=' . $API_KEY, ['fields' => $data]);
+  return json_decode($result::$source, true);
+}
+
+/**
+ * Function for image upload (temporary) with upanh API (chevereto)
+ *
+ * @link https://upanh.org/api-v1
+ */
+function upanh($file, $expiration = 1800) {
+  $API_KEY = 'a6fb90181564047e9633dc18cd36a736'; //public API key
+  $mime = mime_content_type($file);
+  $name = pathinfo($file, PATHINFO_BASENAME);
+  $data = [
+    'source' => new CURLFile($file, $mime, $name),
+    'expiration' => $expiration,
+  ];
+
+  $result = cURL::post('https://upanh.org/api/1/upload?key=' . $API_KEY, ['fields' => $data]);
+  return json_decode($result::$source, true);
+}
+
+/**
+ * Function for image upload (temporary) with FreeImgHost API (chevereto)
+ *
+ * @link https://freeimghost.net/api-v1
+ */
+function freeimghost($file, $expiration = 1800) {
+  $API_KEY = '0df1c83381bcc0ba88e3ec928d09e494'; //public API key
+  $mime = mime_content_type($file);
+  $name = pathinfo($file, PATHINFO_BASENAME);
+  $data = [
+    'source' => new CURLFile($file, $mime, $name),
+    'expiration' => $expiration,
+  ];
+
+  $result = cURL::post('https://freeimghost.net/api/1/upload?key=' . $API_KEY, ['fields' => $data]);
+  return json_decode($result::$source, true);
+}
+
+/**
+ * Function for image upload (temporary) with AnhMoe API (chevereto)
+ *
+ * @link https://anh.moe/page/apidoc
+ */
+function anhmoe($file, $expiration = 1800) {
+  $API_KEY = 'anh.moe_public_api'; //public API key
+  $mime = mime_content_type($file);
+  $name = pathinfo($file, PATHINFO_BASENAME);
+  $data = [
+    'source' => new CURLFile($file, $mime, $name),
+    'expiration' => $expiration,
+  ];
+
+  $result = cURL::post('https://anh.moe/api/1/upload?key=' . $API_KEY, ['fields' => $data]);
+  return json_decode($result::$source, true);
+}
+
+/**
+ * Function for image upload (temporary) with ImgCDN API (chevereto)
+ * Note: guests images will expire in 2 weeks.
+ *
+ * @link https://imgcdn.dev/page/api
+ */
+function imgcdn($file) {
+  $API_KEY = '5386e05a3562c7a8f984e73401540836'; //public API key
+  $mime = mime_content_type($file);
+  $name = pathinfo($file, PATHINFO_BASENAME);
+  $data = [
+    'source' => new CURLFile($file, $mime, $name),
+  ];
+
+  $result = cURL::post('https://imgcdn.dev/api/1/upload?key=' . $API_KEY, ['fields' => $data]);
+  return json_decode($result::$source, true);
+}
+
+/**
+ * Function for image upload (temporary) with Tinypic API (chevereto)
+ * Note: guests images will expire in 1 week.
+ *
+ * @link https://tinypic.host/api-v1
+ */
+function tinypic($file) {
+  $API_KEY = 'fbf7790f8eaf570a3723efcccedac8d6bcdd7e12cb3b5e005c584814728afcfd'; //public API key
+  $mime = mime_content_type($file);
+  $name = pathinfo($file, PATHINFO_BASENAME);
+  $data = [
+    'source' => new CURLFile($file, $mime, $name),
+  ];
+
+  $result = cURL::post('https://tinypic.host/api/1/upload?key=' . $API_KEY, ['fields' => $data]);
+  return json_decode($result::$source, true);
+}
+
+/**
+ * Function for image upload (temporary) with PicHost API (chevereto)
+ * Note: guests images will expire in 6 months.
+ *
+ * @link https://pichost.net/api-v1
+ */
+function pichost($file) {
+  $API_KEY = '10f3dcb13fd98f4c86ab139259a4bd5f0737180dec534ac1e3332e432a6c15ee'; //public API key
+  $mime = mime_content_type($file);
+  $name = pathinfo($file, PATHINFO_BASENAME);
+  $data = [
+    'source' => new CURLFile($file, $mime, $name),
+  ];
+
+  $result = cURL::post('https://pichost.net/api/1/upload?key=' . $API_KEY, ['fields' => $data]);
+  return json_decode($result::$source, true);
+}
+
+/**
+ * Function for image upload with Postimages API
+ *
+ * @link https://github.com/Inirit/Reuploader/blob/835ccad2ab8252833ecebbda0ed97596bbb12097/ts/handlers/PostImage.ts
+ * @link https://postimages.org/app
+ * @link https://postimage.org/settings.php?api=1
+ * @link https://postimages.org/login/api
+ */
+function postimages($file, $apikey = null) {
+  $API_KEY = '8ca0b57a6bb9c4c33cd9e7ab8e6a7f05'; //public API key
+  $unique_id = [
+    'fb733cccce28e7db3ff9f17d7ccff3d1',
+    '59c2ad4b46b0c1e12d5703302bff0120',
+  ];
+  $name = pathinfo($file, PATHINFO_FILENAME);
+  $type = pathinfo($file, PATHINFO_EXTENSION);
+
+  shuffle($unique_id);
+  $data = [
+    'key' => $apikey ?? $API_KEY,
+    // 'gallery' => 'bakomon', //optional
+    'o' => '2b819584285c102318568238c7d4a4c7',
+    'm' => $unique_id[0], //unique device identifier
+    'version' => '1.0.1',
+    'portable' => '1', //optional
+    'name' => $name,
+    'type' => $type, //file extension
+    'image' => base64_encode(file_get_contents($file)),
+  ];
+
+  $headers = [
+    'User-Agent: Mozilla/5.0 (compatible; Postimage/1.0.1; +http://postimage.org/app.php)',
+  ];
+
+  $result = cURL::post('https://api.postimage.org/1/upload', [
+    'fields' => $data,
+    'headers' => $headers,
+  ]);
+
+  $parsed_xml = simplexml_load_string($result::$source);
+  $output = json_encode($parsed_xml);
+
+  return json_decode($output, true);
 }
 
 // #===========================================================================================#
@@ -281,7 +423,7 @@ if (!check_file_ok($img_res)) {
   return;
 }
 
-$folder_path = './.temp-files/';
+$folder_path = sys_get_temp_dir() . '/.temp-files/';
 if (!is_dir($folder_path)) mkdir($folder_path, 0777, true);
 
 $img_parse = parse_url($img_url);
@@ -295,6 +437,8 @@ try {
 
   if ($width && $size[0] > (int)$width || $height && $size[1] > (int)$height) {
     $wsrv_size = '';
+    $IMGPA_URL = 'https://YOUR_VERCEL_PROJECT.vercel.app/imgpa';
+
     if ($width && $height){
       $wsrv_size = "w=$width&h=$height";
     } else {
@@ -311,6 +455,7 @@ try {
     // }
 
     if ($img_blocked) {
+      // If the image is blocked, temporarily upload it to Resmush or <chevereto>
       delete_older_than($folder_path, 86400); //24 hours
       $cache_name = param_check('name', $_GET) ? $_GET['name'] : $img_info['basename'];
       $cache_path = $folder_path . $img_info['extension'] . '-' . $cache_name. '.json';
@@ -319,33 +464,45 @@ try {
         $expiration = 300; //5 minutes
         $cache = cache_file($cache_path, $expiration);
 
-        $qlty = 100; //only used as image storage
-        $resmush = $cache ? $cache : resmushit($img_path, $qlty); //5 minutes (default)
+        $qlty = 100;
+        $resmush = $cache ? $cache : resmushit($img_path, $img_ref, $qlty); //5 minutes (default)
 
         if (isset($resmush['error'])) {
           show_error('reSmush: ' . $resmush['error_long'], $img_url);
         } else {
           file_put_contents($cache_path, json_encode($resmush));
-          $res_url = "https://YOUR_VERCEL_PROJECT.vercel.app/imgpa?$wsrv_size&url=" . rawurlencode($resmush['dest']) . "&q=$quality";
+          $res_url = "$IMGPA_URL?$wsrv_size&url=" . rawurlencode($resmush['dest']) . "&q=$quality&hide_error";
           if (isset($img_parse['fragment'])) $res_url .= '#' . $img_parse['fragment'];
           show_success($img_res, $res_url, $img_info['basename']);
         }
       } else {
         $expiration = 1800; //30 minutes
         $cache = cache_file($cache_path, $expiration);
-        $imgbb = $cache ? $cache : imgbb($img_path, $expiration);
 
+        $imgbb = $cache ? $cache : imgbb($img_path, $expiration);
         if (isset($imgbb['success'])) {
           file_put_contents($cache_path, json_encode($imgbb));
-          $res_url = "https://YOUR_VERCEL_PROJECT.vercel.app/imgpa?$wsrv_size&url=" . rawurlencode($imgbb['data']['display_url']) . "&q=$quality";
+          $res_url = "$IMGPA_URL?$wsrv_size&url=" . rawurlencode($imgbb['data']['display_url']) . "&q=$quality&hide_error";
           if (isset($img_parse['fragment'])) $res_url .= '#' . $img_parse['fragment'];
           show_success($img_res, $res_url, $img_info['basename']);
         } else {
           show_error('ImgBB: ' . $imgbb['message'], $img_url);
         }
+
+        // $postimages = $cache ? $cache : postimages($img_path);
+        // if (array_key_exists('error', $postimages)) {
+        //   show_error('Postimages: ' . $postimages['error'], $img_url);
+        // } else {
+        //   file_put_contents($cache_path, json_encode($postimages));
+        //   $postimages_url = $postimages['links']['hotlink'] . '#' . parse_url($postimages['links']['delete'], PHP_URL_PATH);
+        //   $res_url = "$IMGPA_URL?$wsrv_size&url=" . rawurlencode($postimages_url) . "&q=$quality&hide_error";
+        //   if (isset($img_parse['fragment'])) $res_url .= '#' . $img_parse['fragment'];
+        //   show_success($img_res, $res_url, $img_info['basename']);
+        // }
+
       }
     } else {
-      $res_url = "https://YOUR_VERCEL_PROJECT.vercel.app/imgpa?$wsrv_size&url=" . rawurlencode($img_url) . "&q=$quality";
+      $res_url = "$IMGPA_URL?$wsrv_size&url=" . rawurlencode($img_url) . "&q=$quality&hide_error";
       show_success($img_res, $res_url, $img_info['basename']);
     }
   } else {

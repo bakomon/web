@@ -52,7 +52,7 @@ class Route
     public function get($info, $callback, $target)
     {
         $day = 86400; //24 hours in seconds
-        $path = __DIR__ . '/../../.cache/';
+        $path = sys_get_temp_dir() . '/.cache/';
         $this->delete_older_than($path, $day); //delete all cached file after 24 hours
 
         $timer = $this->param_check('cache', $_GET) ? $_GET['cache'] : 30; //minutes

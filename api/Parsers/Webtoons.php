@@ -6,7 +6,9 @@
  * https://github.com/KotatsuApp/kotatsu-parsers/blob/b06288e7eb4fef4539324c779a0c814a3d735e4d/src/main/kotlin/org/koitharu/kotatsu/parsers/site/all/WebtoonsParser.kt
  */
 
-namespace Api\Services;
+namespace Api\Parsers;
+
+use Api\Services\Http;
 
 class WebtoonsParser
 {
@@ -59,11 +61,16 @@ class WebtoonsParser
         });
     }
 
-    public function getChapter($titleNo, $episodeNo)
+    public function getChapter($seriesID, $chapterID)
     {// getPages
-        $url = "/lineWebtoon/webtoon/episodeInfo.json?v=4&titleNo=$titleNo&episodeNo=$episodeNo";
+        $url = "/lineWebtoon/webtoon/episodeInfo.json?v=4&titleNo=$seriesID&episodeNo=$chapterID";
         $result = $this->makeRequest($url);
-        if (isset($result['error'])) return $result;
+
+        $source = "https://webtoons.com/$this->languageCode/originals/a/e/viewer?title_no=$seriesID&episode_no=$chapterID";
+        if (isset($result['error'])) {
+            $result['source'] = $source;
+            return $result;
+        }
 
         $chapter = $result['episodeInfo'];
 
@@ -74,17 +81,18 @@ class WebtoonsParser
 
         return [
             'cover' => $this->toAbsoluteUrl($chapter['thumbnailImageUrl'], $this->staticDomain),
-            'current' => (string)$episodeNo,
+            'current' => (string)$chapterID,
             'next' => isset($chapter['nextEpisodeNo']) && !$chapter['nextEpisodeRewardAd'] ? ['number' => (string)$chapter['nextEpisodeNo'] ] : json_decode('{}'),
             'prev' => isset($chapter['previousEpisodeNo']) ? ['number' => (string)$chapter['previousEpisodeNo'] ] : json_decode('{}'),
-            'source' => /*$chapter['linkUrl']*/ '',
+            // 'source' => $chapter['linkUrl'],
+            'source' => $source,
             'images' => $img_lists,
         ];
     }
 
-    private function fetchEpisodes($titleNo)
+    private function fetchEpisodes($seriesID)
     {// series - chapter list
-        $url = "/lineWebtoon/webtoon/episodeList.json?v=5&titleNo=$titleNo";
+        $url = "/lineWebtoon/webtoon/episodeList.json?v=5&titleNo=$seriesID";
         $result = $this->makeRequest($url)['episodeList']['episode'];
 
         $data = [];
@@ -97,14 +105,19 @@ class WebtoonsParser
         return $data;
     }
 
-    public function getSeries($titleNo)
+    public function getSeries($seriesID)
     {// getDetails
-        $url = "/lineWebtoon/webtoon/titleInfo.json?titleNo=$titleNo&anyServiceStatus=false";
+        $url = "/lineWebtoon/webtoon/titleInfo.json?titleNo=$seriesID&anyServiceStatus=false";
         $result = $this->makeRequest($url);
-        if (isset($result['error'])) return $result;
+
+        $source = "https://webtoons.com/$this->languageCode/originals/a/list?title_no=$seriesID";
+        if (isset($result['error'])) {
+            $result['source'] = $source;
+            return $result;
+        }
 
         $series = $result['titleInfo'];
-        $chapters = $this->fetchEpisodes($titleNo);
+        $chapters = $this->fetchEpisodes($seriesID);
 
         return [
             'title' => $series['title'],
@@ -113,13 +126,14 @@ class WebtoonsParser
             'detail' => [
                 'type' => 'webtoon',
                 'status' => $series['restTerminationStatus'] == 'TERMINATION' ? 'Completed' : ($series['restTerminationStatus'] == 'REST' ? 'Hiatus' : 'Ongoing'),
+                'released' => '',
                 'author' => $series['writingAuthorName'],
                 'artist' => $series['pictureAuthorName'],
                 'genre' => $series['genreInfo']['name'],
             ],
             'desc' => preg_replace('/\n+/', "\x20", $series['synopsis']),
-            // 'source' => $chapter['linkUrl'],
-            'source' => "https://webtoons.com/$this->languageCode/originals/a/list?title_no=$titleNo",
+            // 'source' => $series['linkUrl'],
+            'source' => $source,
             'chapter' => $chapters,
         ];
     }
@@ -143,20 +157,19 @@ class WebtoonsParser
         $url = "https://m.webtoons.com/$this->languageCode/search/result?searchType=WEBTOON&keyword=$keyword&start=$start";
         $this->response = Http::load($url, ['headers' => $headers]);
         $result = json_decode($this->response->response(), true)['result']['webtoonResult'];
-
         $search = $result['titleList'];
-        if (count($search) == 0) return [];
 
         $data = [
             'display' => $result['display'],
             'total' => $result['total'],
-            'list' => [],
+            'lists' => [],
         ];
+        if (count($search) == 0) return $data;
 
         foreach ($search as $list) {
             if (preg_match('/\(webnovel\)/i', $list['title'])) continue;
-            array_push($data['list'], [
-                'title_no' => (string)$list['titleNo'],
+            array_push($data['lists'], [
+                'series_id' => (string)$list['titleNo'],
                 'title' => $list['title'],
                 'cover' => $this->toAbsoluteUrl($list['thumbnailMobile'], $this->staticDomain),
                 'type' => 'webtoon',
@@ -192,7 +205,7 @@ class WebtoonsParser
         foreach ($allTitle as $list) {
             if ($list['webnovel'] == true) continue;
             array_push($data, [
-                'title_no' => (string)$list['titleNo'],
+                'series_id' => (string)$list['titleNo'],
                 'title' => $list['title'],
                 'cover' => $this->toAbsoluteUrl($list['thumbnail'], $this->staticDomain),
                 'type' => 'webtoon',
@@ -204,7 +217,7 @@ class WebtoonsParser
                 'slug' => $list['groupName'],
             ]);
         }
-        return count($data) == 0 ? [] : $data;
+        return $data;
     }
 
     private function makeRequest($url)
@@ -227,8 +240,8 @@ class WebtoonsParser
                 'error' => [
                     'code' => $code,
                     'message' => $message,
-                    'url' => $finalUrl,
                 ],
+                'source' => $finalUrl,
             ];
         }
     }

@@ -1,6 +1,0 @@
-{
-  "require": {
-    "gumlet/php-image-resize": "^2.0",
-    "bramus/router": "~1.6"
-  }
-}

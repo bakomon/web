@@ -17,6 +17,7 @@ class Http
     public $headers;
     public $source;
     public $error;
+    public static $proxy;
 
     public function __construct()
     {
@@ -39,9 +40,9 @@ class Http
         $fields = isset($options['fields']) ? $options['fields'] : null;
 
         if (isset($options['method']) && $options['method'] == 'POST') {
-            $ch = hQuery::fromUrl($url, $headers, $fields, ['method' => 'POST']);
+            $ch = hQuery::fromUrl($url, $headers, $fields, ['method' => 'POST', 'ignore_ssl' => false]);
         } else {
-            $ch = hQuery::fromUrl($url, $headers);
+            $ch = hQuery::fromUrl($url, $headers, null, ['ignore_ssl' => false]);
         }
 
         $instance->status = $ch->code;
@@ -86,11 +87,11 @@ class Http
         return htmlspecialchars($this->source, ENT_QUOTES);
     }
 
-    public function responseParse()
+    public function responseParse($options = 0)
     {
         $dom = new DOMDocument();
         $response = $this->source;
-        @$dom->loadHTML(mb_encode_numericentity($response, [0x80, 0x10FFFF, 0, ~0], 'UTF-8')); //https://stackoverflow.com/a/8218649
+        @$dom->loadHTML(mb_encode_numericentity($response, [0x80, 0x10FFFF, 0, ~0], 'UTF-8'), $options); //https://stackoverflow.com/a/8218649
         return $dom;
     }
 
@@ -104,6 +105,11 @@ class Http
         return $this->status == 200;
     }
 
+    public function isEmpty()
+    {
+        return $this->source == '' || $this->source == null ? true : false;
+    }
+
     public function isBlocked($xpath = null)
     {
         $blocked = $xpath ? $xpath->query("//input[@id='wsidchk']") : null;
@@ -112,31 +118,36 @@ class Http
 
     public function isDomainChanged($xpath)
     {
-        $url = $xpath->query("//link[@rel='canonical' or contains(@href, '/feed')]");
-        if ($url->length > 0) {
-            $url = $url[0]->getAttribute('href');
-            if (strpos($url, '://') === false && substr($url, 0, 1) != '/') $url = 'http://' . $url;
-            return parse_url($this->link, PHP_URL_HOST) != parse_url($url, PHP_URL_HOST);
+        $lists = $xpath->query("//link[@rel='canonical' or contains(@href, '/feed')]");
+        if ($lists->length > 0) {
+            $changed = true;
+            $dc_lists = [];
+            foreach ($lists as $link) {
+                $url = $link->getAttribute('href');
+                if (strpos($url, '://') === false && substr($url, 0, 1) != '/') $url = 'http://' . $url;
+                if (parse_url($this->link, PHP_URL_HOST) == parse_url($url, PHP_URL_HOST)) $changed = false;
+            }
+            return self::$proxy ? false : $changed;
         } else {
             return false;
         }
     }
 
-    public static function bypass(String $url, $post = null)
+    public static function bypass(String $url, $options = [])
     {
         $source = 'scrapingant';
         $lists = [
-            "scrapingant" => [
+            'scrapingant' => [
                 'api' => 'YOUR_SCRAPINGANT_APIKEY',
                 'url' => 'https://api.scrapingant.com/v2/extended?x-api-key={apikey}&url=',
                 'params' => '&browser=false&proxy_country=ID',
             ],
-            "webscraping" => [
+            'webscraping' => [
                 'api' => 'YOUR_WEBSCRAPINGAI_APIKEY',
                 'url' => 'https://api.webscraping.ai/html?api_key={apikey}&url=',
                 'params' => '&js=false',
             ],
-            "zenscrape" => [
+            'zenscrape' => [
                 'api' => 'YOUR_ZENSCRAPE_APIKEY',
                 'url' => 'https://app.zenscrape.com/api/v1/get?apikey={apikey}&url=',
                 'params' => '',
@@ -144,15 +155,28 @@ class Http
         ];
 
         if (empty($lists[$source]['api'])) {
-            $options = [];
-            if ($post) $options['method'] = 'POST';
             return self::load($url, $options);
         } else {
             $full_url = str_replace('{apikey}', $lists[$source]['api'], $lists[$source]['url']) . urlencode($url) . $lists[$source]['params'];
-            $options = ['bypass' => true, 'source_url' => $url];
-            if ($post) $options['method'] = 'POST';
+            $options = array_merge($options, ['bypass' => true, 'source_url' => $url]);
             return self::load($full_url, $options);
         }
+    }
+
+    public static function proxy(String $url, $options = [])
+    {
+        self::$proxy = true;
+        $source = 'wangwenzhiwwz';
+        $lists = [
+            '1234567Yang' => 'https://y.demo.lhyang.org/',
+            'HuaBofeng' => 'https://proxy.lanni.us.kg/',
+            'wangwenzhiwwz' => 'https://p.wwz.im/',
+            // 'SokWithMe' => 'https://xyp.pages.dev/',
+        ];
+
+        $full_url = $lists[$source] . $url;
+        $options = array_merge($options, ['bypass' => true, 'source_url' => $url]);
+        return self::load($full_url, $options);
     }
 
     public function showError($message = null)

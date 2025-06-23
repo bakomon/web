@@ -4,7 +4,9 @@ namespace Api;
 
 class Allowed
 {
-    public static $site_lists = ['localhost'];
+    public static $site_lists = [
+        'localhost',
+    ];
 
     public function check($options = null)
     {
