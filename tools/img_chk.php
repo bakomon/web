@@ -2,11 +2,17 @@
 
 // Image Processing API
 
-require_once '../api/Allowed.php';
-require_once './curl.php';
+require_once dirname(__DIR__) . '/api/Allowed.php';
+require_once __DIR__ . '/curl.php';
+require_once __DIR__ . '/dot-env.php';
+require_once __DIR__ . '/faker/user-agent.php';
 
 use \Api\Allowed;
 use Tools\cURL;
+use Tools\DotEnv;
+use Faker\UserAgentGenerator;
+
+(new DotEnv(dirname(__DIR__) . '/.env'))->load();
 
 // Prevent direct url access
 if (!(new Allowed)->check(['only_referer' => true])) {
@@ -73,15 +79,19 @@ function parse_header($headers) {
  */
 function image_get($url, $ref = null) {
   $context = null;
+  $options = [
+    'http' => [
+      'header' => 'Accept: image/avif,image/webp,image/apng,*/*;q=0.8' .
+                  "\r\nUser-Agent: " . (new UserAgentGenerator)->userAgent(),
+    ],
+  ];
+
   if ($ref) {
     if (substr($ref, -1) !== '/') $ref .= '/';
-    $options = [
-      'http' => [
-          'header' => 'Referer: ' . $ref,
-      ],
-    ];
-    $context = stream_context_create($options);
+    $options['http']['header'] .= "\r\nReferer: $ref";
   }
+
+  $context = stream_context_create($options);
   $response = @file_get_contents($url, false, $context);
   $headers = $http_response_header;
   $data = [
@@ -177,12 +187,12 @@ function show_error($message, $url = null) {
  * @param string $url The url of image.
  * @param array $headers List of response headers.
  */
-function check_file_ok($data) {
+function check_file_ok($data, $url) {
   $headers = $data->headers;
 
   // If response code not 200, return RESPONSE CODE
   if ($headers['reponse_code'] != '200') {
-    show_error(array_values($headers)[0]);
+    show_error('response status (check_file_ok): ' . array_values($headers)[0], $url);
     exit;
   }
 
@@ -199,6 +209,44 @@ function check_file_ok($data) {
   }
   return TRUE;
 }
+
+/**
+ * Random image proxy URL from a predefined list.
+ *
+ * @return string The selected and processed proxy URL.
+ */
+function proxy() {
+  $proxy_list = [
+    'https://img.gs/${imageoptim_username}/full/',
+    'https://p.lanni.site/',
+  ];
+
+  $imageoptim_usernames = [
+    'mbmjxkqjsq',
+    'fgspclqlqs',
+    'svmrjwhcbh',
+    'lmwjzzlbkg',
+    'jqlqqfmdck',
+    'bnrlhjdqcn',
+    'rhqbmqdfql',
+    'ctvbhdqndp',
+    'vrxhlwwfrw',
+    'pxbmxskjps',
+    'jmhpndsqjl',
+  ];
+
+  shuffle($proxy_list);
+  $proxy = $proxy_list[0];
+
+  if (strpos($proxy, '${imageoptim_username}') !== false) {
+    shuffle($imageoptim_usernames);
+    $proxy = str_replace('${imageoptim_username}', $imageoptim_usernames[0], $proxy);
+  }
+
+  return $proxy;
+}
+
+// #===========================================================================================#
 
 /**
  * Function for image optimization with reSmush.it API
@@ -227,8 +275,7 @@ function resmushit($file, $referer, $quality = 92) {
  *
  * @link https://api.imgbb.com/
  */
-function imgbb($file, $expiration = 1800) {
-  $API_KEY = 'YOUR_IMGBB_APIKEY';
+function imgbb($API_KEY, $file, $expiration = 1800) {
   $data = [
     'image' => base64_encode(file_get_contents($file)),
     'expiration' => $expiration,
@@ -311,24 +358,6 @@ function imgcdn($file) {
 }
 
 /**
- * Function for image upload (temporary) with Tinypic API (chevereto)
- * Note: guests images will expire in 1 week.
- *
- * @link https://tinypic.host/api-v1
- */
-function tinypic($file) {
-  $API_KEY = 'fbf7790f8eaf570a3723efcccedac8d6bcdd7e12cb3b5e005c584814728afcfd'; //public API key
-  $mime = mime_content_type($file);
-  $name = pathinfo($file, PATHINFO_BASENAME);
-  $data = [
-    'source' => new CURLFile($file, $mime, $name),
-  ];
-
-  $result = cURL::post('https://tinypic.host/api/1/upload?key=' . $API_KEY, ['fields' => $data]);
-  return json_decode($result::$source, true);
-}
-
-/**
  * Function for image upload (temporary) with PicHost API (chevereto)
  * Note: guests images will expire in 6 months.
  *
@@ -367,7 +396,7 @@ function postimages($file, $apikey = null) {
   $data = [
     'key' => $apikey ?? $API_KEY,
     // 'gallery' => 'bakomon', //optional
-    'o' => '2b819584285c102318568238c7d4a4c7',
+    'o' => '2b819584285c102318568238c7d4a4c7', // ?
     'm' => $unique_id[0], //unique device identifier
     'version' => '1.0.1',
     'portable' => '1', //optional
@@ -403,24 +432,38 @@ $quality = param_check('quality', $_GET) ? $_GET['quality'] : 85;
 // Check the input for GET.
 if (!$img_url) {
   show_error('Please provide the url of image.');
-  return;
+  exit;
 }
 
 if ($width && !is_numeric($width) || $height && !is_numeric($height) || $quality && !is_numeric($quality)) {
   show_error('Width, Height, and Quality should be number.');
-  return;
+  exit;
 }
 
 $img_res = image_get($img_url);
 if ($img_res->response === false) {
   $img_blocked = true;
+
+  // Try with referer
   $img_res = image_get($img_url, $img_ref);
+
+  // If still blocked, try with proxy
+  if ($img_res->response === false) {
+    $proxy_url = proxy() . $img_url;
+    $img_res = image_get($proxy_url);
+  }
 }
 
 // Check file size and type, if everything is OK, download it.
-if (!check_file_ok($img_res)) {
+if (!check_file_ok($img_res, $img_url)) {
   show_error('Input file should be an image, and the size should not larger than 5MB.');
-  return;
+  exit;
+}
+
+// Check IMGPA_URL configuration
+if (!param_check('IMGPA_URL', $_ENV)) {
+  show_error('IMGPA_URL not configured', $img_url);
+  exit;
 }
 
 $folder_path = sys_get_temp_dir() . '/.temp-files/';
@@ -437,7 +480,7 @@ try {
 
   if ($width && $size[0] > (int)$width || $height && $size[1] > (int)$height) {
     $wsrv_size = '';
-    $IMGPA_URL = 'https://YOUR_VERCEL_PROJECT.vercel.app/imgpa';
+    $IMGPA_URL = $_ENV['IMGPA_URL'];
 
     if ($width && $height){
       $wsrv_size = "w=$width&h=$height";
@@ -445,14 +488,6 @@ try {
       if ($width) $wsrv_size = "w=$width";
       if ($height) $wsrv_size = "h=$height";
     }
-
-    // wsrv.nl (old)
-    // if ($img_info['extension'] == 'png') {
-    //   $quality = convertQuality($quality);
-    //   $quality_str = "l=$quality";
-    // } else {
-    //   $quality_str = "q=$quality";
-    // }
 
     if ($img_blocked) {
       // If the image is blocked, temporarily upload it to Resmush or <chevereto>
@@ -465,7 +500,7 @@ try {
         $cache = cache_file($cache_path, $expiration);
 
         $qlty = 100;
-        $resmush = $cache ? $cache : resmushit($img_path, $img_ref, $qlty); //5 minutes (default)
+        $resmush = $cache ?: resmushit($img_path, $img_ref, $qlty); //5 minutes (default)
 
         if (isset($resmush['error'])) {
           show_error('reSmush: ' . $resmush['error_long'], $img_url);
@@ -479,17 +514,19 @@ try {
         $expiration = 1800; //30 minutes
         $cache = cache_file($cache_path, $expiration);
 
-        $imgbb = $cache ? $cache : imgbb($img_path, $expiration);
-        if (isset($imgbb['success'])) {
-          file_put_contents($cache_path, json_encode($imgbb));
-          $res_url = "$IMGPA_URL?$wsrv_size&url=" . rawurlencode($imgbb['data']['display_url']) . "&q=$quality&hide_error";
+        // $img_temp = $cache ?: imgbb($_ENV['IMGBB_APIKEY'], $img_path, $expiration); //old
+        $img_temp = $cache ?: anhmoe($img_path, $expiration);
+
+        if (isset($img_temp['success'])) {
+          file_put_contents($cache_path, json_encode($img_temp));
+          $res_url = "$IMGPA_URL?$wsrv_size&url=" . rawurlencode($img_temp['image']['url']) . "&q=$quality&hide_error";
           if (isset($img_parse['fragment'])) $res_url .= '#' . $img_parse['fragment'];
           show_success($img_res, $res_url, $img_info['basename']);
         } else {
-          show_error('ImgBB: ' . $imgbb['message'], $img_url);
+          show_error('image_temp: ' . $img_temp['message'], $img_url);
         }
 
-        // $postimages = $cache ? $cache : postimages($img_path);
+        // $postimages = $cache ?: postimages($img_path);
         // if (array_key_exists('error', $postimages)) {
         //   show_error('Postimages: ' . $postimages['error'], $img_url);
         // } else {
@@ -503,6 +540,8 @@ try {
       }
     } else {
       $res_url = "$IMGPA_URL?$wsrv_size&url=" . rawurlencode($img_url) . "&q=$quality&hide_error";
+      if ($img_ref) $res_url .= "&ref=" . rawurlencode($img_ref);
+      $res_url .= "&proxy=" . rawurlencode(proxy());
       show_success($img_res, $res_url, $img_info['basename']);
     }
   } else {

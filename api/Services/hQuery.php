@@ -506,7 +506,7 @@ class hQuery
     {
         // return file_put_contents($fn, $cnt, $block & FILE_APPEND);
         $ret = false;
-        if ($f = fopen($fn, 'c+')) {
+        if ($f = @fopen($fn, 'c+')) {
             $app = $block & FILE_APPEND and $block ^= $app;
             if ($block ? self::do_flock($f, LOCK_EX) : flock($f, LOCK_EX | LOCK_NB)) {
                 if (is_array($cnt) || is_object($cnt)) {
@@ -820,7 +820,7 @@ class hQuery
         $rsps   = '';
         $h      = $_rh      = null;
 
-        if (isset($options['ignore_ssl']) && $options['ignore_ssl'] === false) {
+        if (isset($options['ignore_ssl']) && $options['ignore_ssl'] === true) {
             $context = stream_context_create([
                 'ssl' => [
                     'verify_peer' => false,

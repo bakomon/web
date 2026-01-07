@@ -1,2 +1,8 @@
 # Disable directory listing
 Options -Indexes
+
+# Deny access to ".env" file
+<Files ".env">
+  Order allow,deny
+  Deny from all
+</Files>

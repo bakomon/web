@@ -8,7 +8,10 @@
 
 namespace Api\Parsers;
 
+require_once dirname(__DIR__, 2) . '/tools/faker/user-agent.php';
+
 use Api\Services\Http;
+use Faker\UserAgentGenerator;
 
 class WebtoonsParser
 {
@@ -20,14 +23,14 @@ class WebtoonsParser
     private $staticDomain = 'webtoon-phinf.pstatic.net';
     private $languageCode;
     private $headers = [
-        'User-Agent' => 'nApps (Android 12;; linewebtoon; 3.1.0)'
+        'User-Agent' => 'nApps (Android 14;; linewebtoon; 3.7.0)'
     ];
 
-    public function __construct($source)
+    public function __construct($lang)
     {
-        $this->locale = $source;
+        $this->locale = $lang;
         $this->signer = new WebtoonsUrlSigner('gUtPzJFZch4ZyAGviiyH94P99lQ3pFdRTwpJWDlSGFfwgpr6ses5ALOxWHOIT7R1');
-        $this->languageCode = $this->getLanguageCode($source);
+        $this->languageCode = $this->getLanguageCode($lang);
     }
 
     private function getLanguageCode($locale)
@@ -61,12 +64,15 @@ class WebtoonsParser
         });
     }
 
-    public function getChapter($seriesID, $chapterID)
+    public function getChapter($params)
     {// getPages
-        $url = "/lineWebtoon/webtoon/episodeInfo.json?v=4&titleNo=$seriesID&episodeNo=$chapterID";
+        $seriesID = $params['series_id'];
+        $chapterNo = $params['chapter'];
+
+        $url = "/lineWebtoon/webtoon/episodeInfo.json?v=4&titleNo=$seriesID&episodeNo=$chapterNo";
         $result = $this->makeRequest($url);
 
-        $source = "https://webtoons.com/$this->languageCode/originals/a/e/viewer?title_no=$seriesID&episode_no=$chapterID";
+        $source = "https://webtoons.com/$this->languageCode/originals/a/e/viewer?title_no=$seriesID&episode_no=$chapterNo";
         if (isset($result['error'])) {
             $result['source'] = $source;
             return $result;
@@ -80,10 +86,11 @@ class WebtoonsParser
         }
 
         return [
+            'title' => '',
             'cover' => $this->toAbsoluteUrl($chapter['thumbnailImageUrl'], $this->staticDomain),
-            'current' => (string)$chapterID,
-            'next' => isset($chapter['nextEpisodeNo']) && !$chapter['nextEpisodeRewardAd'] ? ['number' => (string)$chapter['nextEpisodeNo'] ] : json_decode('{}'),
-            'prev' => isset($chapter['previousEpisodeNo']) ? ['number' => (string)$chapter['previousEpisodeNo'] ] : json_decode('{}'),
+            'current' => (string)$chapterNo,
+            'next' => isset($chapter['nextEpisodeNo']) && !$chapter['nextEpisodeRewardAd'] ? [ 'number' => (string)$chapter['nextEpisodeNo'] ] : json_decode('{}'),
+            'prev' => isset($chapter['previousEpisodeNo']) ? [ 'number' => (string)$chapter['previousEpisodeNo'] ] : json_decode('{}'),
             // 'source' => $chapter['linkUrl'],
             'source' => $source,
             'images' => $img_lists,
@@ -92,7 +99,7 @@ class WebtoonsParser
 
     private function fetchEpisodes($seriesID)
     {// series - chapter list
-        $url = "/lineWebtoon/webtoon/episodeList.json?v=5&titleNo=$seriesID";
+        $url = "/lineWebtoon/webtoon/episodeList.json?v=7&titleNo=$seriesID";
         $result = $this->makeRequest($url)['episodeList']['episode'];
 
         $data = [];
@@ -131,80 +138,78 @@ class WebtoonsParser
                 'artist' => $series['pictureAuthorName'],
                 'genre' => $series['genreInfo']['name'],
             ],
-            'desc' => preg_replace('/\n+/', "\x20", $series['synopsis']),
+            'desc' => preg_replace('/\n+/', "\n", $series['synopsis']),
             // 'source' => $series['linkUrl'],
             'source' => $source,
             'chapter' => $chapters,
         ];
     }
 
-    private function fetchDisplay($headers)
+    public function getSearch($adv, $keyword, $page = 1, $display = 30)
     {
-        $url = "https://m.webtoons.com/$this->languageCode/search/result?searchType=WEBTOON&keyword=int32Max2147483647";
-        $response = Http::load($url, ['headers' => $headers]);
-        $display = json_decode($response->response(), true)['result']['webtoonResult']['display'];
-        return $display;
-    }
+        $start = ($page - 1) * $display + 1;
+        $url = "/lineWebtoon/webtoon/searchWebtoon?query=$keyword&startIndex=$start&pageSize=$display"; // "/searchAll", "/searchWebtoon", "/searchChallenge"
+        $result = $this->makeRequest($url);
+        if (isset($result['error'])) return $result;
 
-    public function getSearch($keyword, $page = 1)
-    {
-        $headers = [
-            'Referer' => "https://m.webtoons.com/$this->languageCode/search",
-            'User-Agent' => 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.6478.186 Mobile Safari/537.36',
-        ];
-
-        $start = ($page - 1) * $this->fetchDisplay($headers) + 1;
-        $url = "https://m.webtoons.com/$this->languageCode/search/result?searchType=WEBTOON&keyword=$keyword&start=$start";
-        $this->response = Http::load($url, ['headers' => $headers]);
-        $result = json_decode($this->response->response(), true)['result']['webtoonResult'];
-        $search = $result['titleList'];
+        $search = $result['webtoonSearch']['titleList'];
 
         $data = [
-            'display' => $result['display'],
-            'total' => $result['total'],
+            'next' => '',
             'lists' => [],
         ];
         if (count($search) == 0) return $data;
 
         foreach ($search as $list) {
             if (preg_match('/\(webnovel\)/i', $list['title'])) continue;
+            $slug = preg_replace('/[\s\-_]+/', '-', strtolower(preg_replace('/[^\w\s\-_]/', '', $list['title'])));
             array_push($data['lists'], [
                 'series_id' => (string)$list['titleNo'],
                 'title' => $list['title'],
-                'cover' => $this->toAbsoluteUrl($list['thumbnailMobile'], $this->staticDomain),
+                'cover' => $this->toAbsoluteUrl($list['thumbnail'], $this->staticDomain),
                 'type' => 'webtoon',
                 'color' => '',
-                'completed' => $list['restTerminationStatus'] == 'TERMINATION',
+                'completed' => '',
                 'url' => $this->toAbsoluteUrl("/$this->languageCode/originals/a/list?title_no=" . $list['titleNo'], $this->domain),
-                'slug' => $list['titleGroupName'],
+                'slug' => $slug,
             ]);
         }
+
+        $totalPages = ceil($result['webtoonSearch']['total'] / $display);
+        $next_page = (int)$page + 1;
+        $data['next'] = $totalPages >= $next_page ? (string)$next_page : '';
+
         return $data;
     }
 
-    public function getLatest($sortBy)
+    public function getLatest($sortBy, $page = 1, $display = 24)
     {// getAllTitleList
-        $url = '/lineWebtoon/webtoon/titleList.json?';
+        $sortOrder = [
+            'library' => 'registerYmdt', //added
+            'update' => 'lastEpisodeRegisterYmdt',
+            // 'popular' => 'readCount',
+            // 'subscribe' => 'favoriteCount',
+            // 'rating' => 'starScoreAverage',
+            // 'likeit' => 'likeitCount',
+        ];
+
+        $url = '/lineWebtoon/webtoon/titleList.json?v=3';
         $result = $this->makeRequest($url);
         if (isset($result['error'])) return $result;
 
-        $sortOrder = [
-            'added' => 'registerYmdt',
-            'update' => 'lastEpisodeRegisterYmdt',
-            'popular' => 'readCount',
-            'subscribe' => 'favoriteCount',
-            'rating' => 'starScoreAverage',
-            'likeit' => 'likeitCount',
-        ];
-
         $allTitle = $result['titleList']['titles'];
-        if (count($allTitle) == 0) return [];
-        $this->sortByKey($allTitle, $sortOrder[$sortBy], 'desc');
 
-        $data = [];
+        $data = [
+            'next' => '',
+            'lists' => [],
+        ];
+        if (count($allTitle) == 0) return $data;
+
+        $this->sortByKey($allTitle, $sortOrder[$sortBy], 'desc');
+        $allList = [];
         foreach ($allTitle as $list) {
             if ($list['webnovel'] == true) continue;
-            array_push($data, [
+            array_push($allList, [
                 'series_id' => (string)$list['titleNo'],
                 'title' => $list['title'],
                 'cover' => $this->toAbsoluteUrl($list['thumbnail'], $this->staticDomain),
@@ -217,6 +222,13 @@ class WebtoonsParser
                 'slug' => $list['groupName'],
             ]);
         }
+
+        $chunks = array_chunk($allList, $display); //split array
+        $data['lists'] = $chunks[(int)$page - 1] ?? [];
+
+        $next_page = (int)$page + 1;
+        $data['next'] = isset($chunks[$next_page]) ? (string)$next_page : '';
+
         return $data;
     }
 

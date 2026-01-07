@@ -1,6 +1,6 @@
 <?php
 
-require_once '../api/Allowed.php';
+require_once dirname(__DIR__) . '/api/Allowed.php';
 
 use \Api\Allowed;
 

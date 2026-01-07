@@ -40,13 +40,13 @@ class Route
         $new_data = json_encode($data);
 
         // https://stackoverflow.com/a/1678243
-        if ($this->param_check('callback', $_GET)) :
+        if ($this->param_check('callback', $_GET)) {
             header('Content-Type: text/javascript; charset=utf8');
             echo $_GET['callback'] . '(\'api/' . $_GET['index'] . '\', ' . $new_data . ');';
-        else :
+        } else {
             header('Content-Type: application/json; charset=utf8');
             echo $new_data;
-        endif;
+        }
     }
 
     public function get($info, $callback, $target)

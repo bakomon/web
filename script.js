@@ -71,11 +71,12 @@ function modArray(note, array, str) {
 }
 
 function shuffleArray(array) {
-  for (let i = array.length - 1; i > 0; i--) {
+  const arr = [...array];
+  for (let i = arr.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
-    [array[i], array[j]] = [array[j], array[i]];
+    [arr[i], arr[j]] = [arr[j], arr[i]];
   }
-  return array;
+  return arr;
 }
 
 function urls(str) {
@@ -292,7 +293,10 @@ function copyToClipboard(text, elem) {
 
 // Timestamp to relative time https://stackoverflow.com/a/6109105
 function timeDifference(date) {
-  if (isNumeric(date)) date = Number(date);
+  if (isNumeric(date)) {
+    date = Number(date);
+    if (date < 1e12) date *= 1000; //If it's in seconds, convert to milliseconds
+  }
 
   var msPerMinute = 60 * 1000;
   var msPerHour = msPerMinute * 60;
@@ -354,12 +358,12 @@ var cookies = {
       var date = new Date();
       var timer = interval.includes('|') ? Number(interval.split('|')[1]) : 1;
 
-      if (interval.search(/(year|month)s?/i) != -1) {
-        var year_add = interval.search(/years?/i) != -1 ? timer : 0;
-        var month_add = interval.search(/months?/i) != -1 ? timer : 0;
+      if (/(year|month)s?/i.test(interval)) {
+        var year_add = /years?/i.test(interval) ? timer : 0;
+        var month_add = /months?/i.test(interval) ? timer : 0;
         date.setFullYear(date.getFullYear() + year_add, date.getMonth() + month_add);
       } else {
-        var date_num = interval.search(/weeks?/i) != -1 ? (timer*7*24*60*60) : interval.search(/days?/i) != -1 ? (timer*24*60*60) : interval.search(/hours?/i) != -1 ? (timer*60*60) : interval.search(/minutes?/i) != -1 ? (timer*60) : timer; // default = second
+        var date_num = /weeks?/i.test(interval) ? (timer*7*24*60*60) : /days?/i.test(interval) ? (timer*24*60*60) : /hours?/i.test(interval) ? (timer*60*60) : /minutes?/i.test(interval) ? (timer*60) : timer; // default = second
         date.setTime(date.getTime() + (date_num * 1000));
       }
       expires = '; expires='+ date.toGMTString();
@@ -459,7 +463,7 @@ function bmf_loadXMLDoc(info, url, callback) {
     if (xhr.readyState == XMLHttpRequest.DONE) {
       var response = this.responseText;
       if (this.status == 200) {
-        if ('parse' in info) {
+        if (info.parse) {
           var resHTML = new DOMParser();
           response = resHTML.parseFromString(response, 'text/html');
         }
@@ -602,7 +606,7 @@ function bmf_lazyLoad(elem, note) {
               lazyReset();
               if (lz_img.src.match(bmv_rgx_cdn)) { //cdn is true
                 var err_url = lz_img.src.replace(bmv_rgx_cdn, '');
-                if (bmv_str_cdn == 'imagecdn') err_url = decodeURIComponent(err_url.replace(/^(https?:)?\/\//, ''));
+                if (/imagecdn|weserv/.test(bmv_str_cdn)) err_url = decodeURIComponent(err_url.replace(/^(https?:)?\/\//, ''));
                 var img_elem = single ? single : bmv_dt_lazy[0];
                 img_elem.img = err_url;
               } else if (lz_elem.dataset.ref == 'false') {
@@ -666,13 +670,13 @@ function bmf_lazyLoad(elem, note) {
       var img = elem.dataset.src;
 
       if (bmv_current == 'chapter') {
-        img = bmv_load_cdn && bmv_str_cdn == 'imagecdn' ? encodeURIComponent(img) : img.replace(/^(https?:)?\/\//, '');
+        img = bmv_load_cdn && /imagecdn|weserv/.test(bmv_str_cdn) ? encodeURIComponent(img) : img.replace(/^(https?:)?\/\//, '');
         if (bmv_chk_cdn) img = img.replace(bmv_rgx_cdn, '').replace(/\/[fhwq]=[^\/]+/, '');
         if (bmv_load_cdn) img = bmv_str_cdn_url + img;
         img = wl.protocol +'//'+ img;
 
         // remove location.search ?=
-        if (img.search(/(pending\-load|cdn\.statically\.io|cdn\.imagesimple\.co)/) != -1) img = img.replace(/\?(.*)/g, '');
+        if (/(pending\-load|cdn\.statically\.io|cdn\.imagesimple\.co)/.test(img)) img = img.replace(/\?(.*)/g, '');
 
         // google images (blogger, gdrive, gphotos)
         if (bmv_load_gi) {
@@ -729,7 +733,7 @@ function bmf_meta_tags(note, data) {
 
   if (bmv_current == 'chapter') {
     if (fbase_user && fbase_user['\x74\x69\x65\x72'] == '\x70\x72\x6f') mt_title = `[${data.current.replace(/[-\s]((bahasa?[-\s])?(\bindo\b|indos?nesiaa?)|full)/, '')}] `+ mt_title;
-    d_desc = mt_desc = bmv_settings.l10n.meta_tags.desc_chapter.replace(/\{data_title\}/i, data.title);
+    d_desc = mt_desc = bmv_settings.l10n.meta_tags.desc_chapter.replace('{data_title}', data.title);
     d_key += ', '+ data.title +' Chapter '+ data.current;
   }
 
@@ -818,7 +822,7 @@ function bmf_member_valid(note, elem, elem_c) {
 }
 
 function bmf_member_hibp(note, user, callback) {
-  if (user.email.search(new RegExp(user.pass, 'i')) != -1 || user.pass.search(new RegExp(user.name, 'i')) != -1) {
+  if (new RegExp(user.pass, 'i').test(user.email) || new RegExp(user.name, 'i').test(user.pass)) {
     if (callback) callback(true);
   } else {
     bmf_loadXMLDoc({note:`xhr/${bmv_current}/${note}`}, `${api_path}/tools/hibp.php?pass=${btoa(user.pass)}`, function(n, data) {
@@ -1019,10 +1023,16 @@ function bmf_bmhs_fnc(note) {
       el('.act-duplicate .merge').addEventListener('click', function() {
         bmv_dt_delete = el('.act-duplicate textarea').value.replace(/\n+$/, '').split('\n');
         if (bmv_dt_delete.length == 0 || bmv_dt_delete[0] == '') return;/* [''] */
-        el('.member .post-content').classList.add('loading', 'loge');
 
-        var d_slug = el('.act-duplicate input').value;
-        for (var i in bmv_dt_delete) bmf_bmhs_remove(`series/${bmv_dt_delete[i]}`, d_slug);
+        var m_slug = '';
+        for (var i in bmv_dt_delete) m_slug += '\n👉 '+ bmv_dt_delete[i];
+        var str_confirm = bmv_settings.l10n.bmhs.confirm_merge + m_slug +`\n\nto: "${el('.act-duplicate input').value}" ?`;
+        if (confirm(str_confirm)) {
+          el('.member .post-content').classList.add('loading', 'loge');
+
+          var d_slug = el('.act-duplicate input').value;
+          for (var i in bmv_dt_delete) bmf_bmhs_remove(`series/${bmv_dt_delete[i]}`, d_slug);
+        }
       });
     }
 
@@ -1041,7 +1051,7 @@ function bmf_bmhs_fnc(note) {
       if (bmv_dt_delete.length == 0) return;
       var m_slug = '';
       for (var i in bmv_dt_delete) m_slug += '\n👉 '+ bmv_dt_delete[i];
-      var str_confirm = `Hapus series ini dari ${bmv_prm_slug}?${m_slug}`;
+      var str_confirm = `${bmv_settings.l10n.bmhs.confirm_delete} ${bmv_prm_slug}?${m_slug}`;
       if (confirm(str_confirm)) {
         for (var j in bmv_dt_delete) {
           el(`.m-list li[data-slug="${bmv_dt_delete[j]}"]`).classList.add('loading', 'loge');
@@ -1090,6 +1100,7 @@ function bmf_bmhs_fnc(note) {
     });
 
     el('.m-confirm .dc-cancel').addEventListener('click', function() {
+      el('.m-confirm input').value = '';
       el('.m-confirm').classList.add('no_items');
     });
   }
@@ -1119,17 +1130,20 @@ function bmf_bmhs_fnc(note) {
     el('.m-list .duplicate', 'all').forEach(function(item) {
       item.addEventListener('change', function(e) {
         var d_slug = this.parentElement.dataset.slug;
-        var d_rgx = new RegExp('^'+ d_slug +'(\\n|$)', 'gm');
         var d_in = el('.act-duplicate input');
         var d_ta = el('.act-duplicate textarea');
-        var in1 = d_in.value.search(d_rgx) == -1;
+        var in1 = d_slug != d_in.value;
 
         if (el('input', this).checked) { //add
           var in2 = d_in.value == ''
           if (in2 && d_in.value != d_slug) d_in.value = d_slug;
-          if (in1 && !in2 && d_ta.value.indexOf(d_slug) == -1) d_ta.value += d_slug +'\n';
+          if (in1 && !in2 && d_ta.value.indexOf(d_slug) == -1) {
+            if (d_ta.value != '' && !/\n$/.test(d_ta.value)) d_ta.value += '\n';
+            d_ta.value += d_slug;
+          }
         } else { //remove
           var d_target = !in1 ? d_in : d_ta;
+          var d_rgx = new RegExp('(\\n|^)'+ d_slug +'(\\n|$)', 'gm');
           d_target.value = d_target.value.replace(d_rgx, '');
         }
         this.parentElement.classList.toggle('highlighted');
@@ -1260,14 +1274,20 @@ function bmf_bmhs_html(note) {
       var slug_chk = ('slug_alt' in bmhs_arr[i] && bmv_dt_st.source.site in bmhs_arr[i].slug_alt) && ('source' in bmhs_arr[i] && bmv_dt_st.source.site != bmhs_arr[i].source);
       var slug = slug_chk ? bmhs_arr[i].slug_alt[bmv_dt_st.source.site] : bmhs_arr[i].slug;
       var title = bmhs_arr[i].title == '' ? 'untitled' : bmhs_arr[i].title;
-      var bmhs_slug = bmv_id_series && 'seriesID' in bmhs_arr[i] ? (slug +'/?seriesID='+ bmhs_arr[i].seriesID) : slug;
+      var bmhs_slug = 'series_id' in bmhs_arr[i] ? (slug +'/?seriesID='+ bmhs_arr[i].series_id) : slug;
+      var sr_chk = bmv_id_series && bmhs_arr[i].source != bmv_dt_st.source.site;
 
       if (bmv_prm_slug == 'bookmark') {
         str_bmhs += '<li class="m-series flex f_column" data-slug="'+ bmhs_arr[i].slug +'">';
-        str_bmhs += '<div class="cover f_grow">';
-        str_bmhs += '<a href="#/series/'+ bmhs_slug;
-        if (m_newtab) str_bmhs += '" target="_blank';
-        str_bmhs += '"><img style="min-height:225px;" class="radius full_img loading loge lazy1oad" data-src="'+ bmhs_arr[i].cover +'" alt="'+ title +'" title="'+ title +'" referrerpolicy="no-referrer"></a>';
+        str_bmhs += '<div class="cover f_grow';
+        if (sr_chk) {
+          str_bmhs += ' gray"><span title="source: '+ bmhs_arr[i].source +'"';
+        } else {
+          str_bmhs += '"><a href="#/series/'+ bmhs_slug +'"';
+          if (m_newtab) str_bmhs += ' target="_blank"';
+        }
+        str_bmhs += '"><img style="min-height:225px;" class="radius full_img loading loge lazy1oad" data-src="'+ bmhs_arr[i].cover +'" alt="'+ title +'" title="'+ (sr_chk ? `source: ${bmhs_arr[i].source}` : title) +'" referrerpolicy="no-referrer"></';
+        str_bmhs += (sr_chk ? 'span' : 'a') + '>';
         if (bmhs_arr[i].type != '' && bmhs_arr[i].type != 'webtoon') str_bmhs += '<span class="type m-icon btn radius '+ bmhs_arr[i].type +'"></span>';
         if (bmhs_arr[i].status == 'completed') str_bmhs += '<span class="completed m-icon btn red radius">completed</span>';
         if (bmhs_arr[i].history == 'true') {
@@ -1281,33 +1301,45 @@ function bmf_bmhs_html(note) {
         str_bmhs += '"><h3 class="hd-title clamp">'+ title +'</h3></a></div>';
       } else { //history
         str_bmhs += '<li class="m-series flex f_between" data-slug="'+ bmhs_arr[i].slug +'">';
-        str_bmhs += '<div class="cover">';
-        str_bmhs += '<a href="#/series/'+ bmhs_slug;
-        if (m_newtab) str_bmhs += '" target="_blank';
-        str_bmhs += '"><img style="min-height:130px;" class="radius full_img loading loge lazy1oad" data-src="'+ bmhs_arr[i].cover +'" alt="'+ title +'" title="'+ title +'" referrerpolicy="no-referrer"></a>';
+        str_bmhs += '<div class="cover';
+        if (sr_chk) {
+          str_bmhs += ' gray"><span title="source: '+ bmhs_arr[i].source +'"';
+        } else {
+          str_bmhs += '"><a href="#/series/'+ bmhs_slug +'"';
+          if (m_newtab) str_bmhs += ' target="_blank"';
+        }
+        str_bmhs += '"><img style="min-height:130px;" class="radius full_img loading loge lazy1oad" data-src="'+ bmhs_arr[i].cover +'" alt="'+ title +'" title="'+ (sr_chk ? `source: ${bmhs_arr[i].source}` : title) +'" referrerpolicy="no-referrer"></'
+        str_bmhs += (sr_chk ? 'span' : 'a') + '>';
         if (bmhs_arr[i].bookmarked == 'true') str_bmhs += '<span class="bookmarked m-icon btn green" title="Bookmarked"><svg data-name="fa/bookmark" xmlns="http://www.w3.org/2000/svg" width="0.84em" height="1em" viewBox="0 0 1280 1536"><path fill="currentColor" d="M1164 0q23 0 44 9q33 13 52.5 41t19.5 62v1289q0 34-19.5 62t-52.5 41q-19 8-44 8q-48 0-83-32l-441-424l-441 424q-36 33-83 33q-23 0-44-9q-33-13-52.5-41T0 1401V112q0-34 19.5-62T72 9q21-9 44-9h1048z"/></svg></span>';
-        if (bmhs_arr[i].status && bmhs_arr[i].status.search(/end|completed?|finish(ed)?|tamat/i) != -1) str_bmhs += '<span class="completed m-icon btn red radius">completed</span>';
+        if (bmhs_arr[i].status && /end|completed?|finish(ed)?|tamat/i.test(bmhs_arr[i].status)) str_bmhs += '<span class="completed m-icon btn red radius">completed</span>';
         str_bmhs += '</div>'; //.cover
         str_bmhs += '<div class="detail">';
-        str_bmhs += '<div class="title"><a href="#/series/'+ bmhs_slug;
-        if (m_newtab) str_bmhs += '" target="_blank';
-        str_bmhs += '"><h3 class="hd-title nowrap">'+ title +'</h3></a></div>';
+        str_bmhs += '<div class="title"><';
+        if (sr_chk) {
+          str_bmhs += 'span title="source: '+ bmhs_arr[i].source +'"';
+        } else {
+          str_bmhs += 'a href="#/series/'+ bmhs_slug +'"';
+          if (m_newtab) str_bmhs += ' target="_blank"';
+        }
+        str_bmhs += '"><h3 class="hd-title nowrap">'+ title +'</h3></';
+        str_bmhs += sr_chk ? 'span' : 'a';
+        str_bmhs += '></div>';
         str_bmhs += '<ul>';
 
         var m_visited = genArray(bmhs_arr[i].hs_visited);
         m_visited = sortBy(m_visited, 'added'); //descanding
         for (var j = 0; j < m_visited.length; j++) {
-          var chk_site = m_visited[j].site != bmv_dt_st.source.site;
+          var vst_chk = m_visited[j].site != bmv_dt_st.source.site;
           var m_url = bmf_series_chapter_link('member/history', m_visited[j], slug);
           str_bmhs += '<li class="flex"><';
-          if (chk_site) {
+          if (vst_chk) {
             str_bmhs += 'span title="source: '+ m_visited[j].site +'"';
           } else {
             str_bmhs += 'a href="#/chapter/'+ m_url +'"';
             if (m_newtab) str_bmhs += ' target="_blank"';
           }
           str_bmhs += ' class="f_grow f_clamp">Chapter '+ m_visited[j].number +'</'
-          str_bmhs += chk_site ? 'span' : 'a';
+          str_bmhs += vst_chk ? 'span' : 'a';
           str_bmhs += '><span class="time-ago" title="'+ dateLocal(m_visited[j].added) +'">'+ timeDifference(m_visited[j].added) +'</span></li>';
         }
         str_bmhs += '</ul>';
@@ -1331,7 +1363,7 @@ function bmf_bmhs_html(note) {
 
 function bmf_bmhs_set(note) {
   bmhs_length = Math.ceil(bmhs_arr.length / bmhs_max);
-  bmhs_current = note.search(/(page-\d|\/delete)/) == -1 || bmhs_current < 1 ? 1 : bmhs_current;
+  bmhs_current = !/(page-\d|\/delete)/.test(note) || bmhs_current < 1 ? 1 : bmhs_current;
   if (bmhs_current > bmhs_length) bmhs_current = bmhs_length;
 
   bmf_bmhs_html(note);
@@ -1876,7 +1908,7 @@ function bmf_member_settings_html() {
     str_settings += '<div class="st-source st-list" id="st-source">';
     str_settings += '<h2>API Sources</h2>';
     for (var site in bmv_settings.source) {
-      str_settings += `<label class="radio" title="${bmv_settings.source[site].type}"><input type="radio" name="st-source" value="${site}"><span></span>${site.replace(/_/g, '-')}`;
+      str_settings += `<label class="radio" title="${bmv_settings.source[site].engine}"><input type="radio" name="st-source" value="${site}"><span></span>${site.replace(/_/g, '-')}`;
       if ('note' in bmv_settings.source[site]) str_settings += ` (${bmv_settings.source[site].note})`;
       if ('lang' in bmv_settings.source[site]) str_settings += ` [${bmv_settings.source[site].lang}]`;
       str_settings += '</label>';
@@ -1897,6 +1929,7 @@ function bmf_member_settings_html() {
     str_settings += '<label class="radio"><input type="radio" name="st-cdn" value="default"><span></span>Default</label>';
     str_settings += '<label class="radio"><input type="radio" name="st-cdn" value="not"><span></span>Remove CDN (not)</label>';
     str_settings += '<label class="radio"><input type="radio" name="st-cdn" value="wp"><span></span>wp.com</label>';
+    str_settings += '<label class="radio"><input type="radio" name="st-cdn" value="weserv"><span></span>wsrv.nl</label>';
     str_settings += '<label class="radio"><input type="radio" name="st-cdn" value="imagecdn"><span></span>imagecdn.app</label>';
     str_settings += '<label class="radio"><input type="radio" name="st-cdn" value="imageoptim"><span></span>imageoptim.com</label>';
     str_settings += '</div>'; //.st-cdn
@@ -2241,7 +2274,7 @@ function bmf_build_member() {
     str_member += '</div>';
     if (bmv_prm_slug == 'profile') str_member += '<div class="m-reauth flex f_perfect no_items"><div class="fp_content"><div class="fp_content"><input type="password" name="password" placeholder="Password" autocomplete="off"><div class="flex full f_between m-space-v"><button class="r-save btn f_grow" data-active=""></button><button class="r-cancel btn selected f_grow" style="margin-left:15px;">'+ bmv_settings.l10n.member.cancel +'</button></div></div></div>';
     var dc_text = bmv_prm_slug == 'settings' ? 'reset' : 'delete';
-    if (bmv_prm_slug.search(/bookmark|history|settings/) != -1) str_member += '<div class="m-confirm flex f_perfect no_items"><div class="fp_content wBox bg2 layer"><div class="fp_content"><p><b>Are you absolutely sure?</b></p><p class="m-space-v">This action will <b>permanently</b> '+ dc_text +' all '+ bmv_prm_slug +' data and <b>cannot</b> be undone.</p><p>Please type <b class="no_select">'+ dc_text +'-all-'+ bmv_prm_slug +'</b> to confirm.</p><input class="full m-space-v" type="text" name="verify" placeholder="'+ dc_text +'-all-'+ bmv_prm_slug +'" autocomplete="off"><div class="flex full f_between"><button class="dc-remove btn red f_grow">'+ bmv_settings.l10n.member[bmv_prm_slug == 'settings' ? 'reset' : 'delete'] +'</button><button class="dc-cancel btn selected f_grow" style="margin-left:15px;">'+ bmv_settings.l10n.member.cancel +'</button></div></div></div>';
+    if (/bookmark|history|settings/.test(bmv_prm_slug)) str_member += '<div class="m-confirm flex f_perfect no_items"><div class="fp_content wBox bg2 layer"><div class="fp_content"><p><b>Are you absolutely sure?</b></p><p class="m-space-v">This action will <b>permanently</b> '+ dc_text +' all '+ bmv_prm_slug +' data and <b>cannot</b> be undone.</p><p>Please type <b class="no_select">'+ dc_text +'-all-'+ bmv_prm_slug +'</b> to confirm.</p><input class="full m-space-v" type="text" name="verify" placeholder="'+ dc_text +'-all-'+ bmv_prm_slug +'" autocomplete="off"><div class="flex full f_between"><button class="dc-remove btn red f_grow">'+ bmv_settings.l10n.member[bmv_prm_slug == 'settings' ? 'reset' : 'delete'] +'</button><button class="dc-cancel btn selected f_grow" style="margin-left:15px;">'+ bmv_settings.l10n.member.cancel +'</button></div></div></div>';
   } else if (fbase_config) {
     str_member += '<form class="m-form form-'+ bmv_prm_slug +'" onsubmit="return false">';
     str_member += '<div class="form-email">';
@@ -2471,6 +2504,12 @@ function bmf_menu_fnc(img_list) {
     bmf_menu_cdn_url('wp', this, `i${wp_num}.wp.com/`);
   });
 
+  el('.cdn_weserv').addEventListener('click', function() {
+    // https://images.weserv.nl/docs/introduction.html
+    if (this.classList.contains('cm_active')) return;
+    bmf_menu_cdn_url('weserv', this, 'wsrv.nl/?url=');
+  });
+
   el('.cdn_imagecdn').addEventListener('click', function() {
     // https://imagecdn.app/docs
     if (this.classList.contains('cm_active')) return;
@@ -2580,6 +2619,7 @@ function bmf_chapter_menu() {
   str_menu += '<div class="cm_tr1 flex_wrap">';
   str_menu += '<div class="cm_others cm_line w100 flex_wrap">';
   str_menu += '<button class="cdn_wp cm_cdn cm_btn btn">WP</button>';
+  str_menu += '<button class="cdn_weserv cm_cdn cm_btn btn">wsrv.nl</button>';
   str_menu += '<button class="cdn_imagecdn cm_cdn cm_btn btn">ImageCDN</button>';
   if (imageoptim_username) str_menu += '<button class="cdn_imageoptim cm_cdn cm_btn btn">ImageOptim</button>';
   str_menu += '<button class="cdn_not cm_cdn cm_btn btn">not</button>';
@@ -2681,7 +2721,7 @@ function bmf_chapter_history(slug) {
   // generate & send chapter data to firebase realtime database
   if (fbase_login && !bmv_dt_st.hs_stop) {
     var c_path = bmf_fbase_path(`series/${slug}`);
-    var c_data = bmv_dt_st.source.type.search(/eastheme|koidezign/) != -1 ? '/hs_visited' : ''; //different path for cover
+    var c_data = /eastheme|koidezign/.test(bmv_dt_st.source.engine) ? '/hs_visited' : ''; //different path for cover
 
     bmf_fbase_db_get('chapter/history', c_path + c_data, function(res) {
       if (!bmv_dt_chapter) return;
@@ -2694,11 +2734,11 @@ function bmf_chapter_history(slug) {
         site: bmv_dt_st.source.site //only for info (visited chapter)
       };
       if (bmv_id_series || bmv_id_chapter) {
-        if (bmv_id_series && 'seriesID' in bmv_dt_chapter) {
-          ch_current['seriesID'] = bmv_dt_chapter.seriesID;
-          ch_data['seriesID'] = bmv_dt_chapter.seriesID;
+        if (bmv_id_series && 'series_id' in bmv_dt_chapter) {
+          ch_current['series_id'] = bmv_dt_chapter.series_id;
+          ch_data['series_id'] = bmv_dt_chapter.series_id;
         }
-        if (bmv_id_chapter && 'chapterID' in bmv_dt_chapter) ch_current['chapterID'] = bmv_dt_chapter.chapterID;
+        if (bmv_id_chapter && 'chapter_id' in bmv_dt_chapter) ch_current['chapter_id'] = bmv_dt_chapter.chapter_id;
       } else {
         ch_current['url'] = urls(bmv_dt_chapter.source).pathname;
       }
@@ -2706,7 +2746,7 @@ function bmf_chapter_history(slug) {
       if (res.exists()) {
         // update history, get first {bmv_max_hv} data
         ch_visited = res.val();
-        if (bmv_dt_st.source.type.search(/eastheme|koidezign/) == -1) ch_visited = 'hs_visited' in ch_visited ? ch_visited.hs_visited : {};
+        if (!/eastheme|koidezign/.test(bmv_dt_st.source.engine)) ch_visited = 'hs_visited' in ch_visited ? ch_visited.hs_visited : {};
         ch_visited[bmv_dt_chapter.current] = ch_current;
         ch_visited = genArray(ch_visited); //convert to Array
         ch_visited = sortBy(ch_visited, 'added'); //sort by "added" (desc)
@@ -2724,7 +2764,7 @@ function bmf_chapter_history(slug) {
       }
       ch_data.slug = slug;
       ch_data.hs_visited = ch_visited;
-      var cover_chk = bmv_dt_st.source.type.search(/eastheme|koidezign/) == -1 && res.exists() && 'cover' in bmv_dt_chapter && bmv_dt_chapter.cover == '';
+      var cover_chk = !/eastheme|koidezign/.test(bmv_dt_st.source.engine) && res.exists() && 'cover' in bmv_dt_chapter && bmv_dt_chapter.cover == '';
       if (cover_chk) ch_data.cover = res.val().cover;
       bmf_fbase_db_change('chapter/history/set', c_path, 'update', ch_data); //use "update" to keep "other data" from being deleted
     });
@@ -2818,8 +2858,8 @@ function bmf_build_chapter(data) {
   if (bc_newtab) str_chapter += '" target="_blank';
   str_chapter += '">'+ bmv_settings.l10n.homepage +'</a> &#62; <a href="'+ bmv_sr_list;
   if (bc_newtab) str_chapter += '" target="_blank';
-  str_chapter += '">Series</a> &#62; <a href="#/series/'+ data.slug;;
-  if (bmv_id_series) str_chapter += '/?seriesID='+ bmv_dt_chapter.seriesID;
+  str_chapter += '">Series</a> &#62; <a href="#/series/'+ data.slug;
+  if (bmv_id_series) str_chapter += '/?seriesID='+ bmv_dt_chapter.series_id;
   str_chapter += '" title="'+ title;
   if (bc_newtab) str_chapter += '" target="_blank';
   str_chapter += '"><span class="bc-title'+ (is_mobile ? '' : ' nowrap') +'">'+ title +'</span></a> &#62; Chapter '+ ch_current +'</div></div>';
@@ -2874,7 +2914,7 @@ function bmf_build_chapter(data) {
 
   // get data from series for type & chapter list
   var ch_series = `${api_path}/api/?source=${bmv_dt_st.source.site}&index=series&slug=${data.slug}`;
-  if (bmv_id_series) ch_series += '&seriesID='+ bmv_dt_chapter.seriesID;
+  if (bmv_id_series) ch_series += '&seriesID='+ bmv_dt_chapter.series_id;
   ch_series += '&cache='+ bmv_dt_st.cache;
   bmf_loadXMLDoc({note:`xhr/${bmv_current}/nav`}, ch_series, bmf_chapter_nav);
 }
@@ -2890,23 +2930,17 @@ function bmf_series_chapter_number(check) {
 }
 
 function bmf_series_chapter_link(note, data, slug) {
-  if (note.search(/\/select/i) != -1) data = bmf_series_chapter_number(data);
+  if (/\/select/i.test(note)) data = bmf_series_chapter_number(data);
   var ch_link = (slug || window['bmv_dt_'+ bmv_current].slug) +'/'+ data.number.replace(/[\.\s\t\-]+/g, '-').toLowerCase();
 
   var ch_query = '';
-  var series_id = (window['bmv_dt_'+ bmv_current] || data).seriesID;
+  var sr_id = (window['bmv_dt_'+ bmv_current] || data).series_id;
   if (bmv_id_series || bmv_id_chapter) {
-    if (series_id) ch_query = 'seriesID='+ encodeURIComponent(series_id);
+    if (sr_id) ch_query = 'seriesID='+ encodeURIComponent(sr_id);
 
-    if (bmv_dt_st.source.site != 'webtoons') {
-      var ch_val = null;
-      if ('url' in data) {
-        ch_val = data.url;
-        if (bmv_dt_st.source.site == 'mangapark') ch_val = data.url.match(/title\/([^\-]+)[^\/]+\/([^\-]+)-/)[2];
-        if (bmv_dt_st.source.site == 'mangasee') ch_val = data.url.replace(/\/chapters?\//i, '');
-      } else {
-        ch_val = data.chapterID;
-      }
+    var sc_site = (data.site || bmv_dt_st.source.site);
+    if (sc_site != 'webtoons') {
+      var ch_val = 'url' in data ? data.url : data.chapter_id;
       if (ch_val) ch_query += '&chapterID='+ encodeURIComponent(ch_val);
     }
   } else {
@@ -2927,16 +2961,16 @@ function bmf_series_chapter_list(note, data) {
     if (note == 'visited') str_lists += '<div class="ch-title">'+ bmv_settings.l10n.series.visited +'</div>';
     str_lists += '<ul class="flex_wrap">';
     for (var i in data) {
-      var chk_site = note == 'visited' && (data[i].site != bmv_dt_st.source.site || bmv_chk_dp);
+      var vst_chk = note == 'visited' && (data[i].site != bmv_dt_st.source.site || bmv_chk_dp);
       str_lists += '<li><';
-      if (chk_site) {
+      if (vst_chk) {
         str_lists += 'span title="source: '+ data[i].site +'"';
       } else {
         str_lists += 'a href="#/chapter/'+ bmf_series_chapter_link(note, data[i]) +'"';
         if (s_newtab) str_lists += ' target="_blank"';
       }
       str_lists += ' class="chapter full radius">Chapter '+ data[i].number.replace(/[-\s]((bahasa?[-\s])?(\bindo\b|indos?nesiaa?)|full)/, '') +'</';
-      str_lists += chk_site ? 'span' : 'a';
+      str_lists += vst_chk ? 'span' : 'a';
       str_lists += '></li>';
     }
     str_lists += '</ul>';
@@ -2951,6 +2985,7 @@ function bmf_series_fnc(slug) {
 
   el('.info-left img').addEventListener('error', function() {
     if (this.dataset.src != '' && this.dataset.ref == 'false') {
+      this.dataset.ref = 'true';
       this.src = `${api_path}/tools/img_ref.php?ref=${encodeURIComponent(bmv_lz_referer)}&url=`+ encodeURIComponent(this.dataset.src);
     } else {
       this.classList.remove('loading', 'loge');
@@ -2965,7 +3000,7 @@ function bmf_series_fnc(slug) {
       var s_path = bmf_fbase_path(`series/${slug}`);
       bmf_fbase_db_get('series/bookmark', `${s_path}/bookmarked`, function(res) {
         if (!bmv_dt_series) return;
-        if (res.val() == 'true') {
+        if (res.val() == 'true') { //bookmarked
           s_bm.classList.remove('wait');
           s_bm.classList.add('marked', 'red');
           s_bm.removeAttribute('disabled');
@@ -2980,7 +3015,7 @@ function bmf_series_fnc(slug) {
             data['slug_alt'] = alt;
           }
           data.slug = slug;
-          if (bmv_id_series) data['seriesID'] = bmv_dt_series.seriesID;
+          if (bmv_id_series) data['series_id'] = bmv_dt_series.series_id;
           bmf_fbase_db_change('series/bookmark', s_path, 'update', data);
         } else {
           s_bm.classList.remove('wait', 'marked', 'red');
@@ -3006,8 +3041,12 @@ function bmf_series_fnc(slug) {
             el('.series .visited-list').classList.add('ch-list', 'bg2', 'radius');
             bmf_series_chapter_list('visited', hs_list); //Build visited list
 
-            if (bmv_dt_series.cover != '' && !s_bm.classList.contains('marked')) {
-              bmf_fbase_db_change('series/cover', `${s_path}`, 'update', {cover:bmv_dt_series.cover});
+            // sync/update series info, if not bookmarked
+            if (!s_bm.classList.contains('marked')) {
+              var data = { source: bmv_dt_st.source.site };
+              if (bmv_dt_series.cover != '') data['cover'] = bmv_dt_series.cover;
+              if (bmv_id_series && 'series_id' in bmv_dt_series) data['series_id'] = bmv_dt_series.series_id;
+              bmf_fbase_db_change('series/info', `${s_path}`, 'update', data);
             }
           }
         });
@@ -3023,7 +3062,7 @@ function bmf_series_fnc(slug) {
         this.classList.add('wait');
 
         if (this.classList.contains('marked')) {
-          if (confirm(`Hapus series ini dari bookmark?\n👉 ${slug}`)) {
+          if (confirm(`${bmv_settings.l10n.bmhs.confirm_delete} bookmark?\n👉 ${slug}`)) {
             var r_note = 'series/bookmark/remove';
             var hs_path = bmf_fbase_path(`series/${slug}/hs_visited`);
             bmf_fbase_db_check(r_note, hs_path, function(res) {
@@ -3048,7 +3087,7 @@ function bmf_series_fnc(slug) {
               alert(`Total bookmark telah melampaui kuota (${bmv_max_bmhs}), coba hapus bookmark lain.`);
             } else {
               var bm_arr = bmf_fbase_gen('bookmark|info|set', bmv_dt_series);
-              if (bmv_id_series) bm_arr['seriesID'] = bmv_dt_series.seriesID;
+              if (bmv_id_series) bm_arr['series_id'] = bmv_dt_series.series_id;
               bmf_fbase_db_change('series/bookmark/set', s_path, 'update', bm_arr, function() { //use "update" to keep "history" from being deleted
                 s_bm.classList.remove('wait');
                 s_bm.classList.add('marked', 'red');
@@ -3099,7 +3138,7 @@ function bmf_series_fnc(slug) {
 
   if (el('.series .mod-slug')) {
     el('.series .mod-slug').addEventListener('click', function() {
-      if (wl.hash.search(/series\/\d{5,}(\w{1,2})?-/) != -1) {
+      if (/series\/\d{5,}(\w{1,2})?-/.test(wl.hash)) {
         wl.href = wl.href.replace(/series\/\d{5,}(\w{1,2})?-/, 'series/');
       } else {
         wl.href = wl.href.replace(/(-[a-z]{1,3}\d{1,3}|-\d{1,3}[a-z]{1,3})$/, '');
@@ -3138,10 +3177,11 @@ function bmf_build_series(data) {
   var s_desc = data.desc.replace(/.*bercerita\stentang\s/i, '');
   str_series += '<div class="desc">';
   str_series += '<b>'+ bmv_settings.l10n.series.synopsis +'</b>';
-  str_series += '<div class="summary'+ (is_mobile && s_desc.length >= 400 ? ' clamp' : '') +'">'+ (s_desc != '' ? s_desc.replace(/(?<!\bno)\.\s/gi, '.<div class="new_line"></div>') : '-') +'</div>';
+  var s_nline = '<div class="new_line"></div>';
+  str_series += '<div class="summary'+ (is_mobile && s_desc.length >= 400 ? ' clamp' : '') +'">'+ (s_desc != '' ? s_desc.replace(/\n/g, s_nline).replace(/(?<!\bno)\.\s/gi, `.${s_nline}`) : '-') +'</div>';
   if (is_mobile && s_desc.length >= 400) str_series += '<div class="accordion more t_center"><span class="show-more btn bgrey">Show more&#160;&#160;&#x25BC;</span><span class="show-less btn bgrey">Show less&#160;&#160;&#x25B2;</span></div>';
   str_series += '</div>'; //.description
-  if (data.detail.genre.search(/adult/i) != -1) str_series += '<div class="warning t_center radius">Series ini dikategorikan sebagai Dewasa/Adult<br>MEMBACA SERIES INI DAPAT <b>MERUSAK OTAKMU</b></div>';
+  if (/adult|mature/i.test(data.detail.genre)) str_series += '<div class="warning t_center radius">'+ bmv_settings.l10n.series.age_rating +'</div>';
   str_series += '<div class="chapters">';
   str_series += '<div class="visited-list"></div>';
   if (data.chapter.length > 1) {
@@ -3159,7 +3199,7 @@ function bmf_build_series(data) {
   if (bmv_config.disqus_shortname) str_series += '<div id="disqus_thread"><div class="full t_center"><button class="disqus-trigger btn bgrey">'+ bmv_settings.l10n.comment_btn +'</button></div></div>';
   str_series += '</div>'; //.info-right
   if (fbase_user && fbase_user['\x74\x69\x65\x72'] == '\x70\x72\x6f' && bmv_dt_st.sr_list && is_mobile) str_series += '<div class="scroll-to-list btn bgrey">list</div>';
-  if (bmv_dt_st.source.site.search(/tukangkomik|komiku/) != -1 && data.slug.search(/^\d{5,}(\w{1,2})?-|-[a-z]{1,3}\d{1,3}$|-\d{1,3}[a-z]{1,3}$/i) != -1) str_series += '<div class="mod-slug btn bgrey pulse" title="remove random number from slug">slug</div>';
+  if (/komiku/.test(bmv_dt_st.source.site) && /^\d{5,}(\w{1,2})?-|-[a-z]{1,3}\d{1,3}$|-\d{1,3}[a-z]{1,3}$/i.test(data.slug)) str_series += '<div class="mod-slug btn bgrey pulse" title="remove random number from slug">slug</div>';
   str_series += '</div>';
   bmv_el_post.innerHTML = str_series;
 
@@ -3212,19 +3252,20 @@ function bmf_search_result(data) {
   bmv_el_result.classList.remove('no_items');
 }
 
-function bmf_search_adv_fill_set(url, param, type) {
-  var adv_genre = bmf_getParam('genre[]', url);
-  if (param == 'genre' && adv_genre) {
-    for (var genre of adv_genre) {
-      el('.filter .s-genre[value="'+ genre +'"]').checked = true;
-    }
-  } else {
-    var elem = el(`.filter .s-${param}`);
-    if (!elem) return;
+function bmf_adv_fill_set(url, param, type) {
+  var elem = el(`.filter .s-${param}`);
+  if (!elem) return;
 
-    var s_name = elem.getAttribute('name');
-    var s_value = bmf_getParam(s_name, url);
-    if (s_value) {
+  var s_name = decodeURIComponent(elem.getAttribute('name'));
+  var s_value = bmf_getParam(s_name, url);
+
+  if (s_value) {
+    if (param == 'genre') {
+      var adv_genre = bmv_dt_st.source.engine == 'tukutema' || /mangapark|shinigami/.test(bmv_dt_st.source.site) ? s_value[0].split(',') : s_value;
+      for (var genre of adv_genre) {
+        el(`.filter .s-${param}[value="${genre}"]`).checked = true;
+      }
+    } else {
       if (type == 'text') {
         elem.value = s_value[0];
       } else {
@@ -3242,65 +3283,67 @@ function bmf_search_fill() {
     el('.search .post-header span').innerHTML = bmf_getParam('query', w_href)[0];
   } else {
     var adv_wh = bmf_getParam('params', w_href)[0];
-    adv_wh = wl.protocol +'//'+ wl.hostname +'/?'+ decodeURIComponent(adv_wh);
+    adv_wh = wl.protocol +'//'+ wl.hostname +'/?'+ adv_wh;
 
     var adv_list = ['title','status','format','type','order','genre'];
     for (var param of adv_list) {
       var s_type = param == 'title' ? 'text' : 'radio';
-      bmf_search_adv_fill_set(adv_wh, param, s_type);
+      bmf_adv_fill_set(adv_wh, param, s_type);
     }
   }
 }
 
-function bmf_search_adv_value(elem) {
+function bmf_adv_value(elem) {
   var s_param = elem.getAttribute('name');
   return elem.value == '' ? '' : ('&'+ s_param +'='+ elem.value);
 }
 
-function bmf_search_adv_param(info) {
-  var s_title = el('.s-title') ? bmf_search_adv_value(el('.s-title')) : '';
-  var s_status = bmf_search_adv_value(el('.s-status:checked'));
-  var s_format = el('.s-format') ? bmf_search_adv_value(el('.s-format:checked')) : '';
-  var s_type = el('.s-type') ? bmf_search_adv_value(el('.s-type:checked')) : '';
-  var s_order = bmf_search_adv_value(el('.s-order:checked'));
+function bmf_adv_param(info) {
+  var s_title = el('.s-title') ? bmf_adv_value(el('.s-title')) : '';
+  var s_status = bmf_adv_value(el('.s-status:checked'));
+  var s_format = el('.s-format') ? bmf_adv_value(el('.s-format:checked')) : '';
+  var s_type = el('.s-type') ? bmf_adv_value(el('.s-type:checked')) : '';
+  var s_order = bmf_adv_value(el('.s-order:checked'));
 
   var s_genre = el('.s-genre:checked', 'all');
-  var s_genre_val = '';
+  var s_gr_val = '';
+  var s_gr_cmm = bmv_dt_st.source.engine == 'tukutema' || /mangapark|shinigami/.test(bmv_dt_st.source.site);
   if (s_genre.length > 0) {
     for (var genre of s_genre) {
-      if (bmv_dt_st.source.site == 'mangapark') {
-        s_genre_val += genre.value +',';
+      if (s_gr_cmm) {
+        s_gr_val += genre.value +'%2C';
       } else {
-        s_genre_val += bmf_search_adv_value(genre);
+        s_gr_val += bmf_adv_value(genre);
       }
     }
-    if (bmv_dt_st.source.site == 'mangapark') s_genre_val = '&'+ s_genre[0].getAttribute('name') +'='+ s_genre_val.replace(/,$/, '')
+    if (s_gr_cmm) s_gr_val = '&'+ s_genre[0].getAttribute('name') +'='+ s_gr_val.replace(/%2C$/i, '')
   }
 
-  var s_param = s_title.toLowerCase() + s_status + s_format + s_type + s_order + s_genre_val;
+  var s_param = s_title.toLowerCase() + s_status + s_format + s_type + s_order + s_gr_val;
   s_param = s_param == '' ? 'default' : encodeURIComponent(s_param.replace(/^[&\?]/, ''));
   wl.hash = '#/search/?params='+ s_param;
 }
 
-function bmf_search_list(param, type) {
+function bmf_adv_list(param, type) {
+  var sc = bmv_dt_st.source;
+
   // default value is from "eastheme"
-  var s_adv = {"title":{"desc":"Minimal 3 Karakter"},"status":[{"value":"ongoing"},{"value":"completed"}],"format":[{"value":"0","label":"Hitam Putih"},{"value":"1","label":"Berwarna"}],"type":[{"value":"manga","label":"Manga (Jepang)"},{"value":"manhwa","label":"Manhwa (Korea)"},{"value":"manhua","label":"Manhua (Cina)"}],"order":[{"value":"title","label":"A-Z"},{"value":"titlereverse","label":"Z-A"},{"value":"update"},{"value":"latest","label":"Added"},{"value":"popular"}]};
+  var s_adv = {"title":{"desc":"Minimal 3 Karakter"},"status":[{"value":"ongoing"},{"value":"completed"}],"format":[{"value":"0","label":"Hitam Putih"},{"value":"1","label":"Berwarna"}],"type":[{"value":"manga","label":"Manga (Jepang)"},{"value":"manhwa","label":"Manhwa (Korea)"},{"value":"manhua","label":"Manhua (Cina)"}],"order":[{"value":"title","label":"A-Z"},{"value":"titlereverse","label":"Z-A"},{"value":"update"},{"value":"latest","label":"Added"},{"value":"popular"}],"genre%5B%5D":bmv_genres};
 
   var str_adv = '';
-  var s_param = param;
+  var s_param = bmf_adv_settings(param);
   var s_list = s_adv[param];
 
-  if (param == 'status' && bmv_dt_st.source.type == 'themesia') s_list.push({"value": "hiatus"});
+  if (param == 'status' && sc.engine == 'themesia') s_list.push({"value": "hiatus"});
 
-  if (bmv_dt_st.source.type == 'enduser' && param == 'order') { //komikcast
-    s_param = 'orderby';
+  if (sc.engine == 'enduser' && param == 'order') { //komikcast
+    s_param = 'sortby';
     s_list[0].value = 'titleasc';
     s_list[1].value = 'titledesc';
     s_list = s_list.filter(function(obj) { return obj.value != 'latest'; });
   }
 
-  if (bmv_dt_st.source.type == 'madara') {
-    if (param == 'title') s_param = 's';
+  if (sc.engine == 'madara') {
     if (param == 'status') {
       s_param += '[]';
       s_list = [{"value":"on-going","label":"Ongoing"},{"value":"end","label":"Completed"},{"value":"canceled"},{"value":"on-hold","label":"Hiatus"}];
@@ -3311,24 +3354,71 @@ function bmf_search_list(param, type) {
     }
   }
 
-  if (bmv_dt_st.source.site == 'komiku') {
+  if (sc.engine == 'tukutema') {
+    if (param == 'title') s_param = 'search_term';
+    if (param == 'status') {
+      s_param = 'the_status';
+      s_list.push({"value": "on-hiatus","label":"Hiatus"});
+    }
+    if (param == 'type') s_param = 'the_type';
+    if (param == 'order') {
+      s_param = 'orderby';
+      s_list = [{"value":"title","label":"Z-A"},{"value":"updated","label":"Update"},{"value":"rating"},{"value":"bookmarked"},{"value":"popular"}];
+    }
+    if (param == 'genre') s_param = 'the_genre';
+  }
+
+  if (sc.site == 'komiku') {
     if (param == 'status') s_list[1] = {"value":"end","label":"Completed"};
     if (param == 'type') s_param = 'category_name';
     if (param == 'order') {
       s_param = 'orderby';
       s_list = [{"value":"modified","label":"Update"},{"value":"date","label":"Added"},{"value":"meta_value_num","label":"Popular"},{"value":"rand","label":"Random"}];
     }
+    if (param == 'genre') s_param = 'genre';
   }
 
-  if (bmv_dt_st.source.site == 'softkomik') {
+  if (sc.site == 'softkomik') {
     if (param == 'status') s_list = [{"value":"ongoing","label":"Ongoing"},{"value":"tamat","label":"Completed"}];
     if (param == 'order') {
       s_param = 'sortBy';
       s_list = [{"value":"new","label":"Update"},{"value":"newKomik","label":"Added"}];
     }
+    if (param == 'genre') s_param = 'genre';
   }
 
-  if (bmv_dt_st.source.site == 'mangapark') {
+  if (sc.site == 'westmanga') {
+    if (param == 'title') s_param = 'q';
+    if (param == 'status') s_list = [{"value":"Ongoing"},{"value":"Completed"},{"value":"Hiatus"}];
+    if (param == 'type') {
+      s_param = 'country';
+      s_list[0].value = 'JP';
+      s_list[1].value = 'KR';
+      s_list[2].value = 'CN';
+    }
+    if (param == 'order') {
+      s_param = 'orderBy';
+      s_list[0].value = 'Az';
+      s_list[1].value = 'Za';
+      s_list[2].value = 'Update';
+      s_list[3].value = 'Added';
+      s_list[4].value = 'Popular';
+    }
+  }
+
+  if (sc.site == 'shinigami') {
+    if (param == 'title') s_param = 'q';
+    if (param == 'status') s_list.push({"value": "hiatus"});
+    if (param == 'type') s_param = 'format';
+    if (param == 'order') {
+      s_param = 'sort';
+      s_list = [{"value":"latest","label":"Update"},{"value":"popularity","label":"Popular"},{"value":"rating"},{"value":"bookmark"}];
+    }
+    if (param == 'genre') s_param = 'genre_include';
+  }
+
+  if (sc.site == 'mangapark') {
+    if (param == 'title') s_param = 'word';
     if (param == 'status') s_list.push({"value": "hiatus"}, {"value":"cancelled","label":"Canceled"});
     if (param == 'type') {
       s_param = 'genres';
@@ -3336,11 +3426,12 @@ function bmf_search_list(param, type) {
     }
     if (param == 'order') {
       s_param = 'sortby';
-      s_list = [{"value":"field_name","label":"A-Z"},{"value":"field_update","label":"Update"},{"value":"field_create","label":"Added"},{"value":"field_score","label":"Rating Score"}];
+      s_list = [{"value":"field_name","label":"A-Z"},{"value":"field_update","label":"Update"},{"value":"field_create","label":"Added"},{"value":"field_score","label":"Rating"}];
     }
+    if (param == 'genre') s_param = 'genres';
   }
 
-  if (bmv_dt_st.source.site == 'mangasee') {
+  if (sc.site == 'weebcentral') {
     if (param == 'title') s_param = 'text';
     if (param == 'status') {
       s_param = 'included_status';
@@ -3353,11 +3444,13 @@ function bmf_search_list(param, type) {
     }
     if (param == 'order') {
       s_param = 'sort';
-      s_list = [{"value":"Alphabet","label":"A-Z"},{"value":"Latest+Updates","label":"Update"},{"value":"Recently+Added","label":"Added"},{"value":"Popularity","label":"Popular"}];
+      s_list = [{"value":"Alphabet","label":"Alphabet"},{"value":"Latest+Updates","label":"Update"},{"value":"Recently+Added","label":"Added"},{"value":"Popularity","label":"Popular"}];
     }
+    if (param == 'genre') s_param = 'included_tag';
   }
 
-  if (bmv_dt_st.source.site == 'comick') {
+  if (sc.site == 'comick') {
+    if (param == 'title') s_param = 'q';
     if (param == 'status') s_list = [{"value":"1","label":"Ongoing"},{"value":"2","label":"Completed"},{"value":"3","label":"Canceled"},{"value":"4","label":"Hiatus"}];
     if (param == 'type') {
       s_param = 'country';
@@ -3370,6 +3463,16 @@ function bmf_search_list(param, type) {
       s_param = 'sort';
       s_list = [{"value":"uploaded","label":"Update"},{"value":"created_at","label":"Added"},{"value":"user_follow_count","label":"Popular"}];
     }
+    if (param == 'genre') s_param = 'genres';
+  }
+
+  if (param == 'genre') {
+    var g_type = /komiku|softkomik/.test(sc.site) ? 'radio' : 'checkbox';
+    for (var i in bmv_genres) {
+      var g_val = /softkomik|weebcentral/.test(sc.site) ? firstUCase(bmv_genres[i]) : bmv_genres[i];
+      str_adv += `<li><label class="${g_type}"><input type="${g_type}" class="s-${param}" name="${s_param}" value="${g_val}"><span></span>${firstUCase(bmv_genres[i])}</label></li>`;
+    }
+    return str_adv;
   }
 
   if (type == 'text') {
@@ -3378,7 +3481,7 @@ function bmf_search_list(param, type) {
     str_adv = `<li><label class="radio"><input type="radio" class="s-${param}" name="${s_param}" value="" checked><span></span>All</label></li>`;
     for (var i = 0; i < s_list.length; i++) {
       var s_val = s_list[i].value;
-      if (bmv_dt_st.source.site == 'mangasee') s_val = firstUCase(s_val);
+      if (sc.site == 'weebcentral') s_val = firstUCase(s_val);
       str_adv += '<li><label class="radio">';
       str_adv += `<input type="radio" class="s-${param}" name="${s_param}" value="${s_val}"><span></span>`;
       str_adv += 'label' in s_list[i] ? s_list[i].label : firstUCase(s_list[i].value);
@@ -3390,6 +3493,23 @@ function bmf_search_list(param, type) {
   return str_adv;
 }
 
+function bmf_adv_settings(param) {
+  var sc = bmv_dt_st.source;
+
+  // default value is from "eastheme"
+  var s_title = /eastheme|koidezign|madara|tukutema/.test(sc.engine) || /shinigami|mangapark|weebcentral|westmanga|comick/.test(sc.site);
+  var adv = {
+    title: s_title ? 'title' : sc.engine == 'madara' ? 's' : false,
+    status: 'status',
+    format: sc.engine == 'eastheme' ? 'format' : false,
+    type: /klikmanga|leviatanscans/.test(sc.site) ? false : 'type',
+    order: 'order',
+    genre: sc.engine == 'themesia' || sc.site == 'westmanga' ? false : 'genre%5B%5D',
+  };
+
+  return adv[param];
+}
+
 function bmf_build_search(data) {
   // Display "search" page
   bmv_dt_search = data;
@@ -3398,39 +3518,38 @@ function bmf_build_search(data) {
   var str_search = '';
 
   str_search += '<div class="adv-search layer_x">';
-  str_search += '<div class="post-header flex"><h1 class="title">'+ s_h1 + s_page +'</h1><span class="toggle btn t_center'+ (wh.indexOf('params=') == -1 || bmv_dt_st.source.site == 'webtoons' ? ' no_items' : '') +'">+</span></div>';
-  str_search += '<div class="filter in-check'+ (wh.search(/(query|params)=/) != -1 ? ' no_items' : '') +'"><table class="full"><tbody>';
-  if (bmv_dt_st.source.type.search(/eastheme|koidezign|madara/) != -1 || bmv_dt_st.source.site == 'mangasee') str_search += '<tr><td>'+ bmv_settings.l10n.title +'</td><td>'+ bmf_search_list('title', 'text') +'</td></tr>'; //"Title"
+  str_search += '<div class="post-header flex"><h1 class="title">'+ s_h1 + s_page +'</h1><span class="toggle btn t_center';
+  if (wh.indexOf('params=') == -1 || bmv_dt_st.source.site == 'webtoons') str_search += ' no_items';
+  str_search += '">+</span></div>';
+  str_search += '<div class="filter in-check'+ (/(query|params)=/.test(wh) ? ' no_items' : '') +'"><table class="full"><tbody>';
+  if (bmf_adv_settings('title')) str_search += '<tr><td>'+ bmv_settings.l10n.title +'</td><td>'+ bmf_adv_list('title', 'text') +'</td></tr>'; //"Title"
+
   str_search += '<tr><td>Status</td><td><ul class="status radio flex_wrap">';
-  str_search += bmf_search_list('status');
+  str_search += bmf_adv_list('status');
   str_search += '</ul></td></tr>'; //"Status"
-  if (bmv_dt_st.source.type == 'eastheme') {
+
+  if (bmf_adv_settings('format')) {
     str_search += '<tr><td>Format</td><td><ul class="format radio flex_wrap">';
-    str_search += bmf_search_list('format');
+    str_search += bmf_adv_list('format');
     str_search += '</ul></td></tr>'; //"Format"
   }
-  if (bmv_dt_st.source.site.search(/klikmanga|leviatanscans/) == -1) {
+
+  if (bmf_adv_settings('type')) {
     str_search += '<tr><td>Type</td><td><ul class="type radio flex_wrap">';
-    str_search += bmf_search_list('type');
+    str_search += bmf_adv_list('type');
     str_search += '</ul></td></tr>'; //"Type"
   }
+
   str_search += '<tr><td>Order by</td><td><ul class="order radio flex_wrap">';
-  str_search += bmf_search_list('order');
+  str_search += bmf_adv_list('order');
   str_search += '</ul></td></tr>'; //"Order/Sort"
-  if (bmv_dt_st.source.type != 'themesia') {
+
+  if (bmf_adv_settings('genre')) {
     str_search += '<tr><td>Genre</td><td><ul class="genres checkbox flex_wrap">';
-    var g_type = bmv_dt_st.source.site.search(/komiku|softkomik/) != -1 ? 'radio' : 'checkbox';
-    var g_name = 'genre%5B%5D';
-    if (bmv_dt_st.source.site.search(/komiku|softkomik/) != -1) g_name = 'genre';
-    if (bmv_dt_st.source.site == 'mangapark') g_name = 'genres';
-    if (bmv_dt_st.source.site == 'mangasee') g_name = 'included_tag';
-    if (bmv_dt_st.source.site == 'comick') g_name = 'genres';
-    for (var i in bmv_genres) {
-      var g_val = bmv_dt_st.source.site.search(/softkomik|mangasee/) != -1 ? firstUCase(bmv_genres[i]) : bmv_genres[i];
-      str_search += '<li><label class="'+ g_type +'"><input type="'+ g_type +'" class="s-genre" name="'+ g_name +'" value="'+ g_val +'"><span></span>'+ firstUCase(bmv_genres[i]) +'</label></li>';
-    }
+    str_search += bmf_adv_list('genre');
     str_search += '</ul></td></tr>';
   }
+
   str_search += '<tr><td class="submit t_center" colspan="2"><button type="button" class="btn" id="search_btn">Search</button>&nbsp;&nbsp;<button type="button" class="btn" id="reset_btn"'+ (urls(w_href).search != '' ? '' : ' disabled') +'>Reset</button></td></tr>';
   str_search += '</tbody></table></div>'; //.filter
   str_search += '</div>'; //.adv-search
@@ -3455,7 +3574,7 @@ function bmf_build_search(data) {
 
   // Start search
   el('#search_btn').addEventListener('click', function() {
-    bmf_search_adv_param('click');
+    bmf_adv_param('click');
   });
 
   // Reset value
@@ -3730,7 +3849,7 @@ function bmf_build_footer() {
 }
 
 function bmf_build_main() {
-  var main_layer = bmv_current.search(/series|member|contact/i) != -1 ? ' layer' : '';
+  var main_layer = /series|member|contact/i.test(bmv_current) ? ' layer' : '';
   var str_main = '<div class="main max flex_wrap'+ main_layer +'">';
   str_main += '<div class="post-content full">';
   str_main += '<div class="post-info"></div>';
@@ -4004,16 +4123,16 @@ function bmf_param_member() {
         wl.hash = bmf_getParam('continue', w_href)[0];
         return;
       }
-      if (bmv_prm_slug.search(/profile|bookmark|history|settings/i) == -1) {
+      if (!/profile|bookmark|history|settings/i.test(bmv_prm_slug)) {
         wl.hash = '#/member/profile';
         return;
       }
     } else {
-      if (bmv_prm_slug.search(/profile|bookmark|history|settings/i) != -1) {
+      if (/profile|bookmark|history|settings/i.test(bmv_prm_slug)) {
         wl.hash = '#/member/login/?continue='+ encodeURIComponent(wl.hash);
         return;
       }
-      if (bmv_prm_slug.search(/login|forgot|signup/i) == -1) {
+      if (!/login|forgot|signup/i.test(bmv_prm_slug)) {
         wl.hash = '#/member/login';
         return;
       }
@@ -4050,11 +4169,11 @@ function bmf_gen_url() {
   var url_param = `?source=${bmv_dt_st.source.site}`;
   url_param += `&index=${bmv_current}`;
 
-  if (wh.search(/\/page\/\d+/) != -1) {
+  if (/\/page\/\d+/.test(wh)) {
     bmv_page_num = getHash('page');
     url_param += `&page=${bmv_page_num}`;
   }
-  if (bmv_current.search(/series|chapter/i) != -1 && bmv_prm_slug) url_param += `&slug=${bmv_prm_slug}`;
+  if (/series|chapter/i.test(bmv_current) && bmv_prm_slug) url_param += `&slug=${bmv_prm_slug}`;
   if (bmv_current == 'series' && bmv_prm_series) url_param += '&'+ bmv_prm_series.replace(/^\?/, ''); //seriesID=
   if (bmv_current == 'chapter' && bmv_prm_chapter) url_param += `&chapter=${bmv_prm_chapter}`; //url=, seriesID=, chapterID=
 
@@ -4189,7 +4308,7 @@ function bmf_get_fragment() {
   var list_wh = wh.replace(/\/page\/\d+/, '').split('/');
   bmv_current = list_wh.length > 1 ? list_wh[1] : 'latest';
   bmv_chk_query = wh.includes('query=') ? true : false; // if search page has "?query="
-  bmv_chk_nav = bmv_current.search(/latest|search/i) != -1 ? true : false; //page navigation
+  bmv_chk_nav = /latest|search/i.test(bmv_current) ? true : false; //page navigation
 
   if (is_mobile) document.documentElement.classList.add('mobile');
   document.body.classList.remove('latest','series','chapter','member','search','contact'); //reset bmv_current (class)
@@ -4240,7 +4359,7 @@ function bmf_get_fragment() {
 // #===========================================================================================#
 
 function status_default(status) {
-  return status.replace(/berjalan|on-going|publishing/i, 'ongoing').replace(/on-hold|on[\-\s]hiatus/i, 'hiatus').replace(/discontinued/i, 'canceled').replace(/end|finish(ed)?|complete|tamat/i, 'completed');
+  return status.replace(/berjalan|on-going|publishing/i, 'ongoing').replace(/on-hold|on[\-\s]hiatus/i, 'hiatus').replace(/discontinued/i, 'canceled').replace(/end|finish(ed)?|completed?|tamat/i, 'completed');
 }
 
 function bmf_fbase_slug(note, data, callback, bkp) {
@@ -4258,7 +4377,7 @@ function bmf_fbase_slug(note, data, callback, bkp) {
             if (bkp && data.slug != bkp) bmv_chk_dp = true;
             callback(data.slug);
           } else {
-            var slug = 'title' in data && data.title.search(/\(remake\)/i) != -1 ? data.slug : bkp;
+            var slug = 'title' in data && /\(remake\)/i.test(data.title) ? data.slug : bkp;
             if (slug) {
               if (bkp && data.slug != bkp) bmv_chk_dp = true;
               callback(slug);
@@ -4276,7 +4395,8 @@ function bmf_fbase_slug(note, data, callback, bkp) {
 
 function bmf_fbase_backup() {
   if (!cookies.get('fbase_backup')) {
-    bmf_loadXMLDoc({note:`xhr/${bmv_current}/backup`}, `${api_path}/firebase/backup.php?tz=${encodeURIComponent(timezone)}&uid=${fbase_user.uid}`, function(n, data) {
+    var bkp_url = `${api_path}/firebase/backup.php?tz=${encodeURIComponent(timezone)}&uid=${fbase_user.uid}`;
+    bmf_loadXMLDoc({note:`xhr/${bmv_current}/backup`}, bkp_url, function(n, data) {
       if (data.code != 200 || data.response.includes('Error:')) {
         if (data.code == 200) console.error(data.response);
         alert(data.response);
@@ -4365,7 +4485,8 @@ function bmf_fbase_gen(info, data) {
         title: data.title,
         cover: data.cover,
         hs_visited: {},
-        hs_update: new Date().getTime()
+        hs_update: new Date().getTime(),
+        source: bmv_dt_st.source.site
       };
     }
   }
@@ -4469,7 +4590,7 @@ function bmf_fbase_logout() {
 
 function bmf_fbase_stateChanged(user) {
   if (fbase_config && user) { //User is signed in
-    if (bmv_current.search(/member|series/) != -1) bmf_fbase_lognotif('login');
+    if (/member|series/.test(bmv_current)) bmf_fbase_lognotif('login');
     fbase_login = true;
     fbase_user = user;
     bmf_fbase_db_get('observer/\x74\x69\x65\x72', bmf_fbase_path('profile/\x74\x69\x65\x72'), function(res) {
@@ -4485,7 +4606,7 @@ function bmf_fbase_stateChanged(user) {
     });
     if (user_auto_backup) bmf_fbase_backup();
   } else {
-    if (bmv_current.search(/member|series/) != -1 && fbase_login) bmf_fbase_lognotif('logout');
+    if (/member|series/.test(bmv_current) && fbase_login) bmf_fbase_lognotif('logout');
     cookies.remove('bmv_signup_verify');
     fbase_login = false;
     fbase_user = null;
@@ -4514,7 +4635,7 @@ function bmf_fbase_init() {
     bmf_fbase_observer();
   } else {
     var fbase_rgx = new RegExp(`\^${fbase_app}\$`, 'i');
-    var fbase_chk = firebase.apps.map(item => { return item.name_.search(fbase_rgx) != -1 }).includes(true);
+    var fbase_chk = firebase.apps.map(item => { return fbase_rgx.test(item.name_) }).includes(true);
     if (fbase_chk) {
       console.warn(`Firebase: Firebase App named '${fbase_app}' already exists`);
     } else {
@@ -4558,7 +4679,7 @@ var bmv_zoom = local('get', 'bmv_zoom') ? JSON.parse(local('get', 'bmv_zoom')) :
 var bmv_zm_size = {"manga": 800, "manhua": 700, "manhwa": 500, "webtoon": 500};
 var bmv_rgx_cdn = /((?:(?:i\d+|cdn|img)\.)?(wp|statically|image(?:simple|cdn)|img)\.(?:com?|io|app|gs)\/(?:[^\.]+\/)?)/i;
 var bmv_rgx_gi = /\/([swh]\d+)(?:-[\w]+[^\/]*)?\/|=([swh]\d+).*/i;
-var bmv_genres = ['4-koma','action','adult','adventure','comedy','cooking','crime','demons','doujinshi','drama','ecchi','fantasy','game','ghosts','gore','harem','historical','horror','isekai','josei','kingdom','loli','magic','magical-girls','martial-arts','mature','mecha','medical','military','monster-girls','monsters','music','mystery','one-shot','parody','philosophical','police','post-apocalyptic','psychological','reincarnation','revenge','romance','samurai','school','school-life','sci-fi','seinen','shotacon','shoujo','shounen','slice-of-life','sports','super-power','superhero','supernatural','survival','system','thriller','tragedy','vampires','video-games','villainess','webtoons','wuxia'];
+var bmv_genres = ['4-koma','action','adult','adventure','comedy','cooking','crime','demons','doujinshi','drama','ecchi','fantasy','game','ghosts','gore','harem','historical','horror','isekai','josei','kingdom','loli','magic','magical-girls','martial-arts','mature','mecha','medical','military','monster-girls','monsters','music','mystery','ninja','one-shot','parody','philosophical','police','post-apocalyptic','psychological','reincarnation','revenge','romance','samurai','school','school-life','sci-fi','seinen','shotacon','shoujo','shounen','slice-of-life','sports','super-power','superhero','supernatural','survival','system','thriller','tragedy','vampires','video-games','villainess','webtoons','wuxia'];
 
 // #===========================================================================================#
 
@@ -4570,10 +4691,10 @@ var is_dark = document.documentElement.classList.contains('dark');
 var timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 var last_scroll = 0;
 var check_point = el('#check-point');
-var current_path = wl.origin + wl.pathname;
+var current_path = wl.origin + wl.pathname.replace(/\/$/, '');
 var user_auto_backup = bmv_config.auto_backup;
 var imageoptim_username = bmv_config.imageoptim; //https://imageoptim.com/api/username
-var api_path = bmv_config.api || current_path.substring(0, current_path.lastIndexOf('/'));
+var api_path = bmv_config.api || current_path;
 
 // #===========================================================================================#
 
@@ -4596,8 +4717,8 @@ var bmv_settings = {
   "default": { //bmv_dt_st
     "from": "default",
     "source": {
-      "type": "themesia",
-      "site": "tukangkomik"
+      "engine": "themesia",
+      "site": "ainzscans"
     },
     "sr_copy": true,
     "sr_list": true,
@@ -4616,126 +4737,120 @@ var bmv_settings = {
   },
   "source": {
     "bacakomik": {
-      "type": "eastheme",
+      "engine": "eastheme",
       "site": "bacakomik"
     },
-    "tukangkomik": {
-      "type": "themesia",
-      "site": "tukangkomik"
-    },
     "ikiru": {
-      "type": "themesia",
-      "site": "ikiru"
+      "engine": "tukutema",
+      "site": "ikiru",
+      "scid": ['chapter']
     },
     "maid": {
-      "type": "koidezign",
+      "engine": "koidezign",
       "site": "maid"
     },
     "komiksin": {
-      "type": "themesia",
+      "engine": "themesia",
       "site": "komiksin"
     },
     "kiryuu": {
-      "type": "themesia",
+      "engine": "themesia",
       "site": "kiryuu"
     },
     "komikcast": {
-      "type": "enduser",
+      "engine": "enduser",
       "site": "komikcast"
     },
-    "pojokmanga": {
-      "type": "madara",
-      "site": "pojokmanga"
-    },
     "klikmanga": {
-      "type": "madara",
+      "engine": "madara",
       "site": "klikmanga"
     },
     "lumoskomik": {
-      "type": "madara",
+      "engine": "madara",
       "site": "lumoskomik"
     },
-    "komiklovers": {
-      "type": "themesia",
-      "site": "komiklovers"
-    },
     "cosmicscans": {
-      "type": "themesia",
+      "engine": "themesia",
       "site": "cosmicscans"
     },
     "manhwalist": {
-      "type": "themesia",
+      "engine": "themesia",
       "site": "manhwalist"
     },
     "ainzscans": {
-      "type": "themesia",
+      "engine": "themesia",
       "site": "ainzscans"
     },
     "soulscans": {
-      "type": "themesia",
+      "engine": "themesia",
       "site": "soulscans"
     },
     "westmanga": {
-      "type": "themesia",
+      "engine": "none",
       "site": "westmanga"
     },
     "komikstation": {
-      "type": "themesia",
+      "engine": "themesia",
       "site": "komikstation"
     },
+    "mangakita": {
+      "engine": "themesia",
+      "site": "mangakita"
+    },
     "softkomik": {
-      "type": "none",
+      "engine": "none",
       "site": "softkomik"
     },
     "webtoons": {
-      "type": "none",
+      "engine": "none",
       "site": "webtoons",
       "note": "originals",
       "scid": ['series']
     },
     "komiku": {
-      "type": "none",
+      "engine": "none",
       "site": "komiku"
     },
     "mgkomik": {
-      "type": "madara",
+      "engine": "madara",
       "site": "mgkomik"
     },
     "shinigami": {
-      "type": "madara",
-      "site": "shinigami"
+      "engine": "none",
+      "site": "shinigami",
+      "scid": ['series', 'chapter']
     },
     "leviatanscans": {
-      "type": "madara",
+      "engine": "madara",
       "site": "leviatanscans",
       "lang": "en"
     },
     "reaper_scans": {
-      "type": "themesia",
+      "engine": "themesia",
       "site": "reaper_scans",
       "lang": "en"
     },
     "manhuaus": {
-      "type": "madara",
+      "engine": "madara",
       "site": "manhuaus",
       "lang": "en"
     },
     "mangapark": {
-      "type": "none",
+      "engine": "none",
       "site": "mangapark",
-      "note": "v5",
+      "note": "v20251008",
       "lang": "en",
       "scid": ['series', 'chapter']
     },
-    "mangasee": {
-      "type": "none",
-      "site": "mangasee",
-      "note": "v25.02.02",
+    "weebcentral": {
+      "engine": "none",
+      "site": "weebcentral",
+      "note": "v25.05.09",
       "lang": "en",
       "scid": ['series', 'chapter']
     },
     "comick": {
-      "type": "none",
+      "engine": "none",
       "site": "comick",
       "lang": "en",
       "scid": ['chapter']
@@ -4789,7 +4904,9 @@ var bmv_settings = {
       "synopsis": "Sinopsis",
       "visited": "Terakhir Dibaca",
       "first": "Chapter Awal",
-      "last": "Chapter Baru"
+      "last": "Chapter Baru",
+      "age_rating": "Hanya untuk pembaca berusia <b>18 tahun ke atas</b>.<div class=\"new_line\"></div>Serial ini mungkin mengandung kekerasan intens, darah/gore, konten seksual, dan/atau bahasa kasar yang tidak cocok untuk pembaca di bawah umur."
+      // "age_rating": "For readers <b>18 years and older</b> only.<div class=\"new_line\"></div>This series may contains intense violence, blood/gore, sexual content and/or strong language that is not suitable for younger readers."
     },
     "member": {
       "profile": "Profil",
@@ -4822,7 +4939,9 @@ var bmv_settings = {
       "delete_notif": "<p class=\"m-text\"><b>Apakah Kamu yakin?</b></p><p>Akun ini dan termasuk semua data Profil, Pengaturan, Bookmark, History akan dihapus secara <b>permanen</b> dan tidak dapat dikembalikan.</p>"
     },
     "bmhs": {
-      "info": "yang dapat di simpan pada akun yang digunakan saat ini maksimal"
+      "info": "yang dapat di simpan pada akun yang digunakan saat ini maksimal",
+      "confirm_delete": "Hapus series ini dari",
+      "confirm_merge": "Merge this series:"
     },
     "notif_msg": {
       "all": [],

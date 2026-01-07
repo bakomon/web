@@ -4,35 +4,33 @@
 
 namespace Api\Parsers;
 
+require_once dirname(__DIR__, 2) . '/tools/faker/user-agent.php';
+
 use Api\Services\Http;
+use Faker\UserAgentGenerator;
 
 class ComickParser
 {
     public $response;
     private $headers;
-    private $domain = 'comick.io';
+    private $domain = 'comick.dev';
     private $coverDomain = 'meo.comick.pictures';
     private $languageCode = 'en';
-    private $user_agent = [ // mobile, https://explore.whatismybrowser.com/useragents/explore/software_name/
-      'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.6943.49 Mobile Safari/537.36', //chrome
-      'Mozilla/5.0 (Android 15; Mobile; rv:135.0) Gecko/135.0 Firefox/135.0', //firefox
-      'Mozilla/5.0 (Linux; Android 11; EB2101) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36 Edg/96.0.1054.53', // edge
-      'Mozilla/5.0 (Linux; U; Android 14; 23049PCD8G Build/UKQ1.230804.001; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/130.0.6723.108 Mobile Safari/537.36 OPR/79.0.2254.70768', //opera
-      'Mozilla/5.0 (Linux; arm_64; Android 15; SM-G965F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.6943.49 YaBrowser/25.2.0.241 Mobile Safari/537.36', //yandex
-      'Mozilla/5.0 (Linux; Android 10; BRAVE Build/QP1A.190711.020; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/131.0.6778.201 Mobile Safari/537.36 binu/8799 (be50ddc661fd7cca) Moya/7.4.0', //brave
-      'Mozilla/5.0 (Linux; Android 10; SM-A013G Build/QP1A.190711.020; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/131.0.6778.200 Mobile Safari/537.36' //android-webview
-    ];
 
     public function __construct()
     {
         $this->headers = [
-            'Referer: https://comick.io/',
-            'User-Agent: ' . $this->user_agent[array_rand($this->user_agent)],
+            "Origin: https://$this->domain", //optional
+            "Referer: https://$this->domain/",
+            'User-Agent: ' . (new UserAgentGenerator)->userAgent(),
         ];
     }
 
-    public function getChapter($slug, $chapterID)
+    public function getChapter($params)
     {
+        $slug = $params['slug'];
+        $chapterID = $params['chapter_id'];
+
         $url = "https://api.$this->domain/chapter/$chapterID?tachiyomi=true";
         $this->response = $this->makeRequest($url, ['headers' => $this->headers]);
 
@@ -46,7 +44,7 @@ class ComickParser
         if ($result['next']) {
             $next = [
                 'number' => (string)$result['next']['chap'],
-                'chapterID' => (string)$result['next']['hid'],
+                'chapter_id' => (string)$result['next']['hid'],
             ];
         } else {
             $next = json_decode('{}');
@@ -55,15 +53,17 @@ class ComickParser
         if ($result['prev']) {
             $prev = [
                 'number' => (string)$result['prev']['chap'],
-                'chapterID' => (string)$result['prev']['hid'],
+                'chapter_id' => (string)$result['prev']['hid'],
             ];
         } else {
             $prev = json_decode('{}');
         }
 
         $img_lists = [];
-        foreach ($chapter['images'] as $list) {
-            array_push($img_lists, $list['url']);
+        if (isset($chapter['images']) && is_array($chapter['images'])) {
+            foreach ($chapter['images'] as $list) {
+                array_push($img_lists, $list['url']);
+            }
         }
 
         return [
@@ -77,10 +77,10 @@ class ComickParser
         ];
     }
 
-    private function fetchChapters($titleID)
+    private function fetchChapters($seriesID)
     {// series - chapter list
         $chapters_limit = '2147483647'; //int32 max value
-        $url = "https://api.$this->domain/comic/$titleID/chapters?limit=$chapters_limit";
+        $url = "https://api.$this->domain/comic/$seriesID/chapters?limit=$chapters_limit";
         $response = $this->makeRequest($url, ['headers' => $this->headers]);
         $result = json_decode($response->response(), true);
 
@@ -89,7 +89,7 @@ class ComickParser
             if ($list['lang'] != $this->languageCode) continue;
             array_push($data, [
                 'number' => (string)$list['chap'],
-                'chapterID' => (string)$list['hid'],
+                'chapter_id' => (string)$list['hid'],
             ]);
         }
         return $data;
@@ -105,7 +105,7 @@ class ComickParser
 
         $result = json_decode($this->response->response(), true);
 
-        $type = ['jp' => 'manga', 'kr' => 'manhwa', 'cn' => 'manhua', 'others' => ''];
+        $type = ['jp' => 'manga', 'kr' => 'manhwa', 'cn' => 'manhua'];
         $status = ['1' => 'ongoing', '2' => 'completed', '3' => 'canceled', '4' => 'hiatus'];
 
         $series = $result['comic'];
@@ -121,14 +121,14 @@ class ComickParser
             'alternative' => $this->getList($series['md_titles'], 'title'),
             'cover' => $series['cover_url'],
             'detail' => [
-                'type' => $type[$series['country']],
+                'type' => $type[$series['country']] ?? '',
                 'status' => $status[$series['status']],
                 'released' => $series['year'],
                 'author' => $this->getList($result['authors'], 'name'),
                 'artist' => $this->getList($result['artists'], 'name'),
                 'genre' => implode(', ', $genres),
             ],
-            'desc' => preg_replace('/(\s+)?(\n+)?(\s+)?(\*+)?(notes?|links?):(\*+)?[\s\S]+/i', '', $series['desc']),
+            'desc' => preg_replace(['/\n+[\-_]+\n[\s\S]+/', '/\n+/'], ['', "\n"], $series['desc']),
             'source' => $source,
             'chapter' => $chapters,
         ];
@@ -159,7 +159,7 @@ class ComickParser
         $type = ['jp' => 'manga', 'kr' => 'manhwa', 'cn' => 'manhua'];
 
         foreach ($result as $list) {
-            if ($list['content_rating'] !== 'safe') continue;
+            if ($list['content_rating'] == 'erotica') continue; //exclude_nsfw
             array_push($data['lists'], [
                 // 'series_id' => (string)$list['hid'],
                 'title' => $list['title'],
@@ -177,7 +177,7 @@ class ComickParser
     public function getLatest($sortBy, $page = 1, $display = 24)
     {
         $sortOrder = [
-            'added' => 'created_at',
+            'library' => 'created_at', //added
             'update' => 'uploaded',
         ];
 

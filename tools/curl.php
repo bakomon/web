@@ -21,7 +21,7 @@ class cURL
         if (isset($options['headers'])) curl_setopt($ch, CURLOPT_HTTPHEADER, $options['headers']);
         if (isset($options['useragent'])) curl_setopt($ch, CURLOPT_USERAGENT, $options['useragent']);
         if (isset($options['referer'])) curl_setopt($ch, CURLOPT_REFERER, $options['referer']);
-        if (isset($options['ignore_ssl'])) {
+        if (isset($options['ignore_ssl']) && $options['ignore_ssl'] === true) {
           curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
           curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
         }
@@ -64,12 +64,12 @@ class cURL
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $options['fields']);
+        if (isset($options['fields'])) curl_setopt($ch, CURLOPT_POSTFIELDS, $options['fields']);
         curl_setopt($ch, CURLOPT_POSTREDIR, 3); // or use CURL_REDIR_POST_ALL
         if (isset($options['headers'])) curl_setopt($ch, CURLOPT_HTTPHEADER, $options['headers']);
         if (isset($options['useragent'])) curl_setopt($ch, CURLOPT_USERAGENT, $options['useragent']);
         if (isset($options['referer'])) curl_setopt($ch, CURLOPT_REFERER, $options['referer']);
-        if (isset($options['ignore_ssl'])) {
+        if (isset($options['ignore_ssl']) && $options['ignore_ssl'] === true) {
           curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
           curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
         }

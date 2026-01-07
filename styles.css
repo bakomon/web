@@ -185,6 +185,8 @@ html:not(.mobile) .others .source{margin-left:15px;}
 .post-info .post.post-list>ul>li .btn{line-height:100%;}
 .post-info .post.post-list>ul>li .cover{position:relative;}
 .post-info .post.post-list>ul>li .cover img{aspect-ratio:1/1.44;}
+.post-info .post.post-list>ul>li .cover.gray img{filter:grayscale(1);}
+.post-info .post.post-list>ul>li .cover.gray:hover img{filter:grayscale(0);}
 .post-info .post.post-list>ul>li .cover .type{bottom:5px;left:5px;padding:10px 14px;background:no-repeat center/100% 100%;}
 .post-info .post.post-list>ul>li .cover .type.manga{background-image:url(./images/manga.svg);}
 .post-info .post.post-list>ul>li .cover .type.manhwa{background-image:url(./images/manhwa.svg);}
@@ -262,6 +264,7 @@ html:not(.mobile) .member .m-action .m-delete-btn{order:1;}
 .member .m-act-body{margin-top:25px;}
 .member .m-act-body .act-duplicate{padding:10px;}
 .member .m-act-body .act-duplicate .act-edit{margin:10px 0 15px;}
+.member .m-act-body .act-duplicate textarea{min-height:60px;}
 .member .m-list .post>ul>li .m-act-add{top:5px;left:15px;font-size:70%;line-height:70%;padding:10px 15px;background:no-repeat center/70% 70%;}
 .member .m-list .post>ul>li .delete{background-color:#dd584f;background-image:url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="1.2em" height="1.2em" viewBox="0 0 24 24"%3E%3Cpath fill="%23f5f5f5" d="M5 20a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8h2V6h-4V4a2 2 0 0 0-2-2H9a2 2 0 0 0-2 2v2H3v2h2zM9 4h6v2H9zM8 8h9v12H7V8z"/%3E%3Cpath fill="%23f5f5f5" d="M9 10h2v8H9zm4 0h2v8h-2z"/%3E%3C/svg%3E');}
 .member .m-list .post>ul>li .duplicate{background-color:var(--color5);background-image:url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="1.2em" height="1.2em" viewBox="0 0 20 20"%3E%3Cg fill="%23f5f5f5"%3E%3Cpath fill-rule="evenodd" d="M15.5 6.5h-8a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1m-7 8v-6h6v6z" clip-rule="evenodd"/%3E%3Cpath d="M6.5 13.5h-2a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v2h-2v-1h-6v6h1z"/%3E%3Cpath d="M1.293 2.707a1 1 0 0 1 1.414-1.414l16 16a1 1 0 0 1-1.414 1.414z"/%3E%3C/g%3E%3C/svg%3E');}
@@ -357,7 +360,7 @@ html:not(.mobile) .member .m-action .m-delete-btn{order:1;}
 .chapter #reader .ch-images{position:relative;}
 .chapter #reader .ch-index{position:absolute;top:0;bottom:0;}
 .chapter #reader .ch-index.right{right:0;}
-.chapter #reader .ch-index .sticky{position:sticky;top:50vh;}
+.chapter #reader .ch-index .sticky{position:sticky;top:55vh;}
 .chapter #reader .ch-index .sticky .btn{margin:0;padding:0 8px;}
 .chapter #reader .ch-index .sticky.active .btn{background:#222;border:1px solid #444;}
 

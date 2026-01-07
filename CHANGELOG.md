@@ -295,3 +295,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `komiknesia.xyz` (themesia)
 - [Image Resize API](https://github.com/bakomon/web/tree/0a626ee9ba8e24723e0c06ed3f371618934f42bb/tools/image-resize)
 - Statically CDN
+
+
+## [1.8] - 2026-01-07
+
+### Fixed
+
+- latest & bmhs: Displays incorrect date if timestamp is seconds
+- api: every xml attribute must have an explicit value (boolean attributes)
+- api: remove attributes whose values ​​contain `<`, `>`, or `&`
+- api: converts void elements (like `<input>`) into proper self-closing tags (e.g. `<input/>`)
+- api: cover URL has no host
+- api: refactor HTML escaping logic into `Escape` service and update `Http` class to utilize it
+- parsers: fix `$value` encoding in `getSearch`
+- hquery: suppress fopen warnings in `flock_put_contents`
+- series: image loading error keeps repeating
+- numerous bug fixes and improvements.
+
+### Added
+
+- user agent generator from [FakerPHP/Faker](https://github.com/FakerPHP/Faker)
+- bmhs: disable series link, if `series_id` is true
+- support for `wsrv.nl` CDN
+- .env.example file
+- new source `mangakita.id` (themesia)
+
+### Changed
+
+- regex check `.search()` to `.test()`
+- api: `ikiru.id` themesia to tukutema
+- api: `westmanga.blog` wordpress to custom
+- api: `shinigami.to` wordpress to custom
+- api: `mangapark.net`
+- `komikcast.com` to `komikcast.to`
+- `klikmanga.com` to `klikmanga.org`
+- `cosmictoon.ae` to `cosmictoon.id`
+- `manhwalist.com` to `manhwalist.site`
+- `westmanga.fun` to `westmanga.blog`
+- `komikstation.co` to `komikstation.org`
+- `komiku.id` to `komiku.org`
+- `shinigami.ae` to `shinigami.to`
+- `mangasee123.com` to `weebcentral.com`
+- `comick.io` to `comick.dev`
+- `mangapark.net` to `mangapark.to`
+- `kiryuu.co` to `kiryuu.io`
+
+### Removed
+
+- `tukangkomik.co` (themesia)
+- `pojokmanga.com` (madara)
+- `komiklovers.com` (themesia)

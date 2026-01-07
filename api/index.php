@@ -13,10 +13,10 @@ use Api\Controllers\Controller;
 $route = new Route;
 
 // Prevent direct url access
-if ((new Allowed)->check()) :
-    if ($route->param_check('index', $_GET)) :
+if ((new Allowed)->check()) {
+    if ($route->param_check('index', $_GET)) {
         $route->get($_GET['index'], Controller::class, $_GET['index'] . 'Page');
-    endif;
-else :
+    }
+} else {
     http_response_code(403);
-endif;
+}

@@ -200,6 +200,7 @@ a.btn{color:var(--color3);}
           <label class="curl flex f_middle"><input type="checkbox"/>cURL</label>
           <label class="bypass flex f_middle"><input type="checkbox"/>bypass/proxy</label>
           <label class="mobile flex f_middle"><input type="checkbox"/>mobile</label>
+          <label class="post flex f_middle"><input type="checkbox"/>POST</label>
         </div>
       </div>
       <div class="scrap-result t_center no_items">
@@ -213,7 +214,7 @@ a.btn{color:var(--color3);}
         </div>
         <div class="result-code">
           <div class="result-top">Status Code:</div>
-          <div class="result-bottom"><span class="code"><strong></strong></span><span class="bypass"></span></div>
+          <div class="result-bottom"><span class="code"><strong></strong></span><span class="bypass"></span><span class="method"></span></div>
         </div>
         <div class="result-xml">
           <textarea class="full" style="min-height:200px;" readonly></textarea>
@@ -256,7 +257,7 @@ function loadXMLDoc(url, callback, info = {}) {
     if (xhr.readyState == XMLHttpRequest.DONE) {
       var response = this.responseText;
       if (this.status == 200) {
-        if ('parse' in info) {
+        if (info.parse) {
           var resHTML = new DOMParser();
           response = resHTML.parseFromString(response, 'text/html');
         }
@@ -287,7 +288,7 @@ function scrap_show(data) {
     window['wv_data'] = JSON.parse(data.response);
     // console.log('wv_data:', wv_data);
     var err = 'error' in wv_data ? wv_data.error : false;
-    el('.source-url a').href = wv_data.url.search(/^(https?:)?\/\//) == -1 ? ('//'+ wv_data.url) : wv_data.url;
+    el('.source-url a').href = !/^(https?:)?\/\//.test(wv_data.url) ? ('//'+ wv_data.url) : wv_data.url;
     el('.source-url a').innerHTML = wv_data.url;
     if (we_bypass.checked && 'bypass_url' in wv_data) {
       el('.bypass-url a').href = wv_data.bypass_url;
@@ -296,6 +297,7 @@ function scrap_show(data) {
     }
     el('.result-code .code strong').innerHTML = wv_data.status_code;
     el('.result-code .bypass').innerHTML = !err && wv_data.bypass ? ' (bypass)' : '';
+    el('.result-code .method').innerHTML = we_post.checked ? ' [POST]' : ' [GET]';
     if (wv_data.status_code == 200) el('.result-code .result-bottom').classList.add('result-ok');
     el('.result-xml textarea').value = err ? ('❗❗ Error:\n\n'+ err.message +' in '+ err.file +' on line '+ err.line) : wv_data.body;
   }
@@ -308,6 +310,7 @@ function scrap_show(data) {
 var wv_data, wv_url;
 var we_curl = el('.scrap-submit .curl input');
 var we_bypass = el('.scrap-submit .bypass input');
+var we_post = el('.scrap-submit .post input');
 
 we_curl.addEventListener('change', function() {
   if (this.checked) {
@@ -324,7 +327,7 @@ el('.scrap-submit .submit').addEventListener('click', function() {
     el('.scrap-url').focus();
     return;
   }
-  if (wv_url.search(/^(https?|ftp):/) == -1) wv_url = 'http://'+ wv_url.replace(/^\/\//, '');
+  if (!/^(https?|ftp):/.test(wv_url)) wv_url = 'http://'+ wv_url.replace(/^\/\//, '');
   if (!isValidUrl(wv_url)) {
     alert('Invalid URL');
     el('.scrap-url').select();
@@ -334,7 +337,7 @@ el('.scrap-submit .submit').addEventListener('click', function() {
   el('.scrap-result').classList.add('no_items');
   el('.bypass-url').classList.add('no_items');
   el('.result-code .result-bottom').classList.remove('result-ok');
-  var url = './test.php?url='+ encodeURIComponent(wv_url) +'&curl='+ we_curl.checked +'&bypass='+ we_bypass.checked +'&mobile='+ el('.scrap-submit .mobile input').checked;
+  var url = './test.php?url='+ encodeURIComponent(wv_url) +'&curl='+ we_curl.checked +'&bypass='+ we_bypass.checked +'&mobile='+ el('.scrap-submit .mobile input').checked +'&post='+ we_post.checked;
   loadXMLDoc(url, scrap_show);
 });
 

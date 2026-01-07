@@ -2,24 +2,41 @@
 
 namespace Api\Parsers;
 
+require_once dirname(__DIR__, 2) . '/tools/faker/user-agent.php';
+
 use Api\Services\Http;
+use Faker\UserAgentGenerator;
 
 class SoftkomikParser
 {
     public $response;
+    private $headers;
     private $domain = 'softkomik.com';
-    private $coverDomain = 'cover.softkomik.com/softkomik-cover';
+    private $coverDomain = 'cover.softdevices.my.id/softkomik-cover';
     private $chapterDomain = 'image.softkomik.com/softkomik';
 
-    public function getChapter($slug, $chapterNo)
+    public function __construct()
     {
-        $url = "https://p.softkomik.com/komik/$slug-bahasa-indonesia/$chapterNo";
-        $this->response = Http::load($url);
+        $this->headers = [ //optional
+            "Origin: https://$this->domain",
+            "Referer: https://$this->domain/",
+            'User-Agent: ' . (new UserAgentGenerator)->userAgent(),
+        ];
+    }
+
+    public function getChapter($params)
+    {
+        $slug = $params['slug'];
+        $chapterNo = $params['chapter'];
+
+        $url = "https://p.$this->domain/komik/$slug-bahasa-indonesia/$chapterNo";
+        $this->response = $this->makeRequest($url, ['headers' => $this->headers]);
 
         $source = $this->toAbsoluteUrl("/$slug-bahasa-indonesia/chapter/$chapterNo", $this->domain);
         if (preg_match('/cannot\sread/i', $this->response->response())) return [ 'error' => [ 'code' => 404, 'message' => 'NOT FOUND' ], 'source' => $source ];
 
         $result = json_decode($this->response->response(), true);
+
         $chapter = $result['komik'];
         $cover = (strpos($chapter['gambar'], '/') !== 0 ? '/' : '') . $chapter['gambar'];
 
@@ -62,8 +79,8 @@ class SoftkomikParser
 
     public function getSeries($slug)
     {
-        $url = "https://p.softkomik.com/komik/$slug-bahasa-indonesia";
-        $this->response = Http::load($url);
+        $url = "https://p.$this->domain/komik/$slug-bahasa-indonesia";
+        $this->response = $this->makeRequest($url, ['headers' => $this->headers]);
 
         $source = $this->toAbsoluteUrl("/$slug-bahasa-indonesia", $this->domain);
         if (preg_match('/no\skomik/i', $this->response->response())) return [ 'error' => [ 'code' => 404, 'message' => 'NOT FOUND' ], 'source' => $source ];
@@ -98,7 +115,7 @@ class SoftkomikParser
                 'artist' => '',
                 'genre' => implode(', ', $genres),
             ],
-            'desc' => preg_replace('/\n+/', "\x20", $series['sinopsis']),
+            'desc' => preg_replace('/\n+/', "\n", $series['sinopsis']),
             'source' => $source,
             'chapter' => $chapters,
         ];
@@ -106,18 +123,13 @@ class SoftkomikParser
 
     public function getSearch($adv, $value, $page = 1, $display = 24)
     {
-        $sortOrder = [
-            'added' => 'newKomik',
-            'update' => 'new',
-        ];
-
-        // $url = "https://v3.softkomik.com/get/softkomik/v2/komik?page=$page&limit=$display&sortBy=newKomik";
-        $url = "https://v2.softkomik.com/komik?page=$page&limit=$display";
+        // $url = "https://v3.$this->domain/get/softkomik/v2/komik?page=$page&limit=$display&sortBy=newKomik";
+        $url = "https://v2.$this->domain/komik?page=$page&limit=$display";
         if (strpos($value, 'sortBy=') === FALSE) $url .= '&sortBy=newKomik';
         if (!$adv) $url .= '&search=true';
         $url .= '&' . ($adv ? $value : "name=$value");
 
-        $this->response = Http::load($url);
+        $this->response = $this->makeRequest($url, ['headers' => $this->headers]);
         $result = json_decode($this->response->response(), true);
 
         $data = [
@@ -144,13 +156,13 @@ class SoftkomikParser
     public function getLatest($sortBy, $page = 1, $display = 24)
     {
         $sortOrder = [
-            'added' => 'newKomik',
+            'library' => 'newKomik', //added
             'update' => 'new',
         ];
 
-        // $url = "https://v3.softkomik.com/get/softkomik/v2/komik?page=$page&limit=24&sortBy=" . $sortOrder[$sortBy];
-        $url = "https://v2.softkomik.com/komik?page=$page&limit=$display&sortBy=" . $sortOrder[$sortBy];
-        $this->response = Http::load($url);
+        // $url = "https://v3.$this->domain/get/softkomik/v2/komik?page=$page&limit=24&sortBy=" . $sortOrder[$sortBy];
+        $url = "https://v2.$this->domain/komik?page=$page&limit=$display&sortBy=" . $sortOrder[$sortBy];
+        $this->response = $this->makeRequest($url, ['headers' => $this->headers]);
         $result = json_decode($this->response->response(), true);
 
         $data = [
@@ -174,6 +186,14 @@ class SoftkomikParser
             ]);
         }
         return $data;
+    }
+
+    private function makeRequest($url, $options = [])
+    {
+        $response = Http::load($url, $options);
+        // if (!$response->isSuccess() && $response->isBlocked()) $response = Http::bypass($url, $options);
+        if (!$response->isSuccess() && $response->isBlocked()) $response = Http::proxy($url, $options);
+        return $response;
     }
 
     private function toAbsoluteUrl($url, $domain = null)

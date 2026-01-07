@@ -2,13 +2,15 @@
 
 namespace Api\Test;
 
-require_once '../Allowed.php';
-require_once '../Services/Http.php';
-require_once '../../tools/curl.php';
+require_once dirname(__DIR__) . '/Allowed.php';
+require_once dirname(__DIR__) . '/Services/Http.php';
+require_once dirname(__DIR__, 2) . '/tools/curl.php';
+require_once dirname(__DIR__, 2) . '/tools/faker/user-agent.php';
 
 use Api\Allowed;
 use Api\Services\Http;
 use Tools\cURL;
+use Faker\UserAgentGenerator;
 
 // Prevent direct url access
 if (!(new Allowed)->check()) {
@@ -17,10 +19,11 @@ if (!(new Allowed)->check()) {
 }
 
 $source_link = $_GET['url'];
+$method = $_GET['post'] == 'true' ? 'POST' : 'GET';
 
 $user_agent = [ //chrome
-  'desktop' => 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
-  'mobile' => 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.6478.186 Mobile Safari/537.36',
+  'desktop' => (new UserAgentGenerator)->userAgent(),
+  'mobile' => (new UserAgentGenerator)->safariMobile(),
 ];
 
 $headers = [
@@ -29,7 +32,11 @@ $headers = [
 ];
 
 if ($_GET['curl'] == 'true') {
-  $source_xml = cURL::get($source_link, ['headers' => $headers, 'ignore_ssl' => false]);
+  if (strtoupper($method) === 'POST') {
+    $source_xml = cURL::post($source_link, ['headers' => $headers, 'ignore_ssl' => true]);
+  } else {
+    $source_xml = cURL::get($source_link, ['headers' => $headers, 'ignore_ssl' => true]);
+  }
   $status_code = $source_xml::$status;
   $data = [
     'status_code' => $status_code,
@@ -38,7 +45,7 @@ if ($_GET['curl'] == 'true') {
     'body' => $source_xml::$source,
   ];
 } else {
-  $source_xml = Http::load($source_link, ['headers' => $headers]);
+  $source_xml = Http::load($source_link, ['method' => $method, 'headers' => $headers]);
   if (!$source_xml->isSuccess() && $_GET['bypass'] == 'true') {
     // if ($source_xml->isBlocked()) $source_xml = Http::bypass($source_link, ['headers' => $headers]);
     if ($source_xml->isBlocked()) $source_xml = Http::proxy($source_link, ['headers' => $headers]);
