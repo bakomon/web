@@ -11,7 +11,8 @@ class WestMangaParser
 {
     public $response;
     private $userAgent;
-    private $domain = 'data.westmanga.me';
+    private $domain = 'westmanga.tv';
+    private $apiDomain = 'data.westmanga.tv';
     private $accessKey = 'WM_WEB_FRONT_END';
     private $signatureEnc = 'U2FsdGVkX1/d15RGXgbiDR9ygJcJxQG6sP14ws+Uzzw=';
     private $signaturePass = "LuVwFghhgMGEbqptN4uY0osS45rQWHWxIZ+0oTb5jy8LuVwFghhgMGEbqptN4uY0osS45rQWHWxIZ+0oTb5jy8";
@@ -24,7 +25,7 @@ class WestMangaParser
     public function getChapter($params)
     {
         $chapterSlug = $params['url'];
-        $url = "https://$this->domain/api/v/" . str_replace('/view/', '', $chapterSlug);
+        $url = "https://$this->apiDomain/api/v/" . str_replace('/view/', '', $chapterSlug);
         $this->response = $this->makeRequest($url, ['headers' => $this->generateHeaders($url)]);
 
         $source = $this->toAbsoluteUrl($chapterSlug, $this->domain);
@@ -74,7 +75,7 @@ class WestMangaParser
 
     public function getSeries($slug)
     {
-        $url = "https://$this->domain/api/comic/$slug";
+        $url = "https://$this->apiDomain/api/comic/$slug";
         $this->response = $this->makeRequest($url, ['headers' => $this->generateHeaders($url)]);
 
         $source = $this->toAbsoluteUrl("/comic/$slug", $this->domain);
@@ -109,7 +110,7 @@ class WestMangaParser
                 'type' => $type[strtolower($series['country_id'])],
                 'status' => $series['status'],
                 'released' => $series['release'] ?? '',
-                'author' => $series['author'] == '-' ? '' : $series['author'],
+                'author' => isset($series['author']) && $series['author'] == '-' ? $series['author'] : '',
                 'artist' => '',
                 'genre' => implode(', ', $genres),
             ],
@@ -121,7 +122,7 @@ class WestMangaParser
 
     public function getSearch($adv, $value, $page = 1, $display = 40)
     {
-        $url = "https://$this->domain/api/contents?type=Comic&page=$page&per_page=$display";
+        $url = "https://$this->apiDomain/api/contents?type=Comic&page=$page&per_page=$display";
         $url .= '&' . ($adv ? $value : "q=$value");
 
         $this->response = $this->makeRequest($url, ['headers' => $this->generateHeaders($url)]);
@@ -155,7 +156,7 @@ class WestMangaParser
             'update' => 'Update',
         ];
 
-        $url = "https://$this->domain/api/contents?type=Comic&page=$page&per_page=$display&orderBy=" . $sortOrder[$sortBy];
+        $url = "https://$this->apiDomain/api/contents?type=Comic&page=$page&per_page=$display&orderBy=" . $sortOrder[$sortBy];
         $this->response = $this->makeRequest($url, ['headers' => $this->generateHeaders($url)]);
         $result = json_decode($this->response->response(), true);
 
@@ -211,7 +212,7 @@ class WestMangaParser
         $x = 'wm-api-request';
         $url_path = parse_url($url, PHP_URL_PATH);
         $payload = $now . $method . $url_path .  $this->accessKey . $secret;
-        $signature =  $this->hmac_sha256($x, $payload);
+        $signature = $this->hmac_sha256($x, $payload);
 
         return [
             "Origin: https://$this->domain", //optional

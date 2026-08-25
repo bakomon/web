@@ -168,7 +168,7 @@ class xSelector
             ],
             'scid' => [
                 'chapter' => [
-                    'regex' => '/\/chapter-[^\.]+\.(\d+)/i'
+                    'regex' => '/\/chapter-[^\/]+\.(\d+)/i'
                 ]
             ],
             'options' => [
@@ -176,12 +176,12 @@ class xSelector
                 ],
             ],
             'url' => [
-                'host' => 'https://02.ikiru.wtf',
-                'latest' => 'https://02.ikiru.wtf/advanced-search/?the_exclude=crossdressing%2Cgender-bender%2Cgenderswap%2Cincest%2Cnsfw%2Cshoujo-ai%2Cshounen-ai%2Cbodyswap&the_page={$page}&orderby=updated&order=desc',
-                'search' => 'https://02.ikiru.wtf/advanced-search/?the_exclude=crossdressing%2Cgender-bender%2Cgenderswap%2Cincest%2Cnsfw%2Cshoujo-ai%2Cshounen-ai%2Cbodyswap&the_page={$page}&orderby=popular&order=desc&search_term={$value}',
-                'advanced' => 'https://02.ikiru.wtf/advanced-search/?the_exclude=crossdressing%2Cgender-bender%2Cgenderswap%2Cincest%2Cnsfw%2Cshoujo-ai%2Cshounen-ai%2Cbodyswap&the_page={$page}&{$value}',
-                'series' => 'https://02.ikiru.wtf/manga/{$slug}/',
-                'chapter' => 'https://02.ikiru.wtf/?p={$chapter}',
+                'host' => 'https://04.ikiru.wtf',
+                'latest' => 'https://04.ikiru.wtf/advanced-search/?the_exclude=crossdressing%2Cgender-bender%2Cgenderswap%2Cincest%2Cnsfw%2Cshoujo-ai%2Cshounen-ai&the_page={$page}&orderby=updated&order=desc',
+                'search' => 'https://04.ikiru.wtf/advanced-search/?the_exclude=crossdressing%2Cgender-bender%2Cgenderswap%2Cincest%2Cnsfw%2Cshoujo-ai%2Cshounen-ai&the_page={$page}&orderby=popular&order=desc&search_term={$value}',
+                'advanced' => 'https://04.ikiru.wtf/advanced-search/?the_exclude=crossdressing%2Cgender-bender%2Cgenderswap%2Cincest%2Cnsfw%2Cshoujo-ai%2Cshounen-ai&the_page={$page}&{$value}',
+                'series' => 'https://04.ikiru.wtf/manga/{$slug}/',
+                'chapter' => 'https://04.ikiru.wtf/?p={$chapter}',
             ],
             'latest' => [ //parent is same as "LS" parent
                 'chapter' => [
@@ -218,10 +218,10 @@ class xSelector
                 'nav' => [ //no parent
                     'manual' => true,
                     'next' => [
-                        'xpath' => "//*[@id='search-results']//*[name()='polyline' and @points='9 18 15 12 9 6']/ancestor::button",
+                        'xpath' => "//*[@id='search-results']//*[contains(name(), 'polyline') and @points='9 18 15 12 9 6']/ancestor::button",
                     ],
                     'prev' => [
-                        'xpath' => "//*[@id='search-results']//*[name()='polyline' and @points='15 18 9 12 15 6']/ancestor::button",
+                        'xpath' => "//*[@id='search-results']//*[contains(name(), 'polyline') and @points='15 18 9 12 15 6']/ancestor::button",
                     ],
                 ],
             ],
@@ -597,58 +597,49 @@ class xSelector
     {
         $data = [
             'backend' => 'wordpress',
-            'theme' => 'themesia',
+            'theme' => 'tukutema',
             'lang' => 'id',
+            'parser' => [
+                'xpath' => ".//*[@id='search-results']",
+            ],
+            'scid' => [
+                'chapter' => [
+                    'regex' => '/\/chapter-[^\/]+\.(\d+)/i'
+                ]
+            ],
+            'options' => [
+                'fields' => [
+                ],
+            ],
             'url' => [
-                'host' => 'https://kiryuu02.com',
-                'latest' => 'https://kiryuu02.com/manga/?page={$page}&order=update',
-                'search' => 'https://kiryuu02.com/page/{$page}/?s={$value}',
-                'advanced' => 'https://kiryuu02.com/manga/?page={$page}&{$value}',
-                'series' => 'https://kiryuu02.com/manga/{$slug}/',
-                'chapter' => 'https://kiryuu02.com/{$slug}-chapter-{$chapter}/',
+                'host' => 'https://v5.kiryuu.to',
+                'latest' => 'https://v5.kiryuu.to/advanced-search/?the_exclude=boys-love%2Ccrossdressing%2Cgender-bender%2Cgenderswap%2Cgirls-love%2Cincest%2Cshoujo-ai%2Cshounen-ai%2Csmut%2Cyaoi%2Cyuri&the_page={$page}&orderby=updated&order=desc',
+                'search' => 'https://v5.kiryuu.to/advanced-search/?the_exclude=boys-love%2Ccrossdressing%2Cgender-bender%2Cgenderswap%2Cgirls-love%2Cincest%2Cshoujo-ai%2Cshounen-ai%2Csmut%2Cyaoi%2Cyuri&the_page={$page}&orderby=popular&order=desc&search_term={$value}',
+                'advanced' => 'https://v5.kiryuu.to/advanced-search/?the_exclude=boys-love%2Ccrossdressing%2Cgender-bender%2Cgenderswap%2Cgirls-love%2Cincest%2Cshoujo-ai%2Cshounen-ai%2Csmut%2Cyaoi%2Cyuri&the_page={$page}&{$value}',
+                'series' => 'https://v5.kiryuu.to/manga/{$slug}/',
+                'chapter' => 'https://v5.kiryuu.to/?p={$chapter}',
             ],
             'latest' => [ //parent is same as "LS" parent
                 'chapter' => [
-                    'xpath' => ".//*[contains(@class, 'adds')]//*[contains(@class, 'epxs')]",
+                    'xpath' => ".//a[contains(@href, '/chapter-')]//p",
                 ],
-            ],
-            'search' => [
-                'nav' => [ //no parent
-                    'regex' => '/.*page[\/=](\d+)[\/&]?/i',
-                    'next' => [
-                        'xpath' => "//*[contains(@class, 'pagination')]//a[contains(@class, 'next page-numbers')]",
-                        'attr' => 'href',
-                    ],
-                    'prev' => [
-                        'xpath' => "//*[contains(@class, 'pagination')]//a[contains(@class, 'prev page-numbers')]",
-                        'attr' => 'href',
-                    ],
-                ],
-            ],
-            'advanced' => [ //if "nav" is in "search" and "advanced nav" is same as "LS"
-                'nav' => 'LS',
             ],
             'LS' => [
-                'parent' => "//*[contains(@class, 'listupd')]//a/parent::*",
+                'parent' => "//*[@id='search-results']//a[@color='primary']/ancestor::*[contains(@class, 'group-data-') and contains(@class, '=horizontal')]",
                 'title' => [
-                    'xpath' => ".//*[@class='tt']",
+                    'xpath' => ".//h1",
                 ],
                 'cover' => [
-                    'xpath' => ".//img",
+                    'xpath' => ".//a[@color='primary']//img",
                     'attr' => 'src',
-                    'attr_alt' => 'data-cfsrc',
                 ],
                 'type' => [
-                    'xpath' => ".//*[contains(@class, 'type')]",
-                    'attr' => 'class',
+                    'xpath' => ".//img[contains(@src, 'static/svg/')]",
+                    'attr' => 'src',
                     'regex' => '/[\s\/](man(?:h[wu]|g)a)/i',
                 ],
-                'color' => [
-                    'xpath' => ".//*[contains(@class, 'colored')]",
-                ],
                 'completed' => [
-                    'xpath' => ".//*[contains(@class, 'status')]",
-                    'attr' => 'class',
+                    'xpath' => ".//*[contains(@class, 'rounded-full')]/following-sibling::p",
                     'regex' => '/\s?(end|completed?|finish(ed)?|tamat)/i',
                 ],
                 'link' => [
@@ -661,88 +652,88 @@ class xSelector
                     'attr' => 'href',
                 ],
                 'nav' => [ //no parent
-                    'regex' => '/.*page[\/=](\d+)[\/&]?/i',
+                    'manual' => true,
                     'next' => [
-                        'xpath' => "//*[contains(@class, 'hpage')]//a[@class='r']",
-                        'attr' => 'href',
+                        'xpath' => "//*[@id='search-results']//*[contains(name(), 'polyline') and @points='9 18 15 12 9 6']/ancestor::button",
                     ],
                     'prev' => [
-                        'xpath' => "//*[contains(@class, 'hpage')]//a[@class='l']",
-                        'attr' => 'href',
+                        'xpath' => "//*[@id='search-results']//*[contains(name(), 'polyline') and @points='15 18 9 12 15 6']/ancestor::button",
                     ],
                 ],
             ],
             'series' => [
                 'parent' => "//article",
-                'shortlink' => [ //no parent
-                    'xpath' => "//link[@rel='shortlink']",
-                    'attr' => 'href',
-                    'regex' => '/(?:\?p=|wp\.me\/)(.*)/i',
-                ],
                 'title' => [
-                    'xpath' => ".//h1",
+                    'xpath' => ".//h1[@itemprop='name']",
                     'regex' => '/([kc]omi[kc]s?|man(ga|hwa|hua)|series|title)\s/i',
                     'regex2' => '/(\sbahasa?)?\s(\bindo\b|indos?nesiaa?)/i',
                 ],
                 'alternative' => [
-                    'xpath' => ".//*[contains(@class, 'seriestualt')]",
+                    'xpath' => ".//h1[@itemprop='name']/following-sibling::*",
+                    'regex' => '/(\s+)?((judul\s)?(alternati[fv]e?|lain)(\stitles?)?)\:?\s+/i',
                 ],
                 'cover' => [
-                    'xpath' => ".//*[contains(@class, 'thumb')]//img",
+                    'xpath' => ".//*[@itemprop='image']//img",
                     'attr' => 'src',
-                    'attr_alt' => 'data-lzl-src',
                 ],
                 'detail' => [
                     'type' => [
-                        'xpath' => ".//*[contains(@class, 'infotable')]//*[contains(text(), 'Type')]/parent::*//td[2]",
-                    ],
-                    'status' => [
-                        'xpath' => ".//*[contains(@class, 'infotable')]//*[contains(text(), 'Status')]/parent::*//td[2]",
+                        'xpath' => ".//*[contains(text(), 'Type')]/../..//*[contains(@class, 'inline')]/p", //same as parent::
                     ],
                     'released' => [
-                        'xpath' => ".//*[contains(@class, 'infotable')]//*[contains(text(), 'Released')]/parent::*//td[2]",
-                    ],
-                    'author' => [
-                        'xpath' => ".//*[contains(@class, 'infotable')]//*[contains(text(), 'Author')]/parent::*//td[2]",
-                    ],
-                    'artist' => [
-                        'xpath' => ".//*[contains(@class, 'infotable')]//*[contains(text(), 'Artist')]/parent::*//td[2]",
+                        'xpath' => ".//*[contains(text(), 'Released')]/../..//*[contains(@class, 'inline')]/p", //same as parent::
                     ],
                     'genre' => [
-                        'xpath' => ".//*[contains(@class, 'seriestugenre')]//a",
+                        'xpath' => ".//a[contains(@href, '/genre/')]/parent::*//a",
                     ],
                 ],
                 'desc' => [
-                    'xpath' => ".//*[contains(@class, 'entry-content') and @itemprop='description']",
+                    'xpath' => ".//*[@itemprop='description' and not(contains(text(),  '[…]'))]",
                     'regex' => '/\s+|&(#160|nbsp);/',
                 ],
                 'chapter' => [
-                    'xpath' => ".//*[@id='chapterlist']//*[contains(@class, 'eph-num')]//a",
+                    'xpath' => ".//*[@id='chapter-list']//*[@data-chapter-number]//a",
+                    'attr' => 'href',
                     'regex' => '/(?:-(?:c(?:[ha](?:ap|ao|hp|pa|a|p))[tp]er|episode|vol(?:ume)?|view|shot|\b(?:ch(?:ap)?|ep)\b))?-(\d(?:[\w\-]+)?)$/i',
                     'regex2' => '/(-(bahasa?-)?(\bindo\b|indos?nesiaa?)\/?|\/([\?#].*)?$)/i',
-                    'attr' => 'href',
+                    'fetch' => [
+                        'host' => true,
+                        'url' => '/wp-admin/admin-ajax.php?action=chapter_list&manga_id={$series_id}&page=1',
+                        'xpath' => ".//*[@id='chapter-list']",
+                    ],
                     'num' => [ //parent is xpath above
-                        'xpath' => ".//*[contains(@class, 'chapternum')]",
+                        'xpath' => "./parent::*",
+                        'attr' => 'data-chapter-number',
                     ],
                 ],
             ],
             'chapter' => [
-                'parent' => "//article",
+                'parent' => "//main",
                 'title' => [
-                    'xpath' => ".//*[contains(@class, 'allc')]//a",
+                    'xpath' => ".//a[contains(@href, '/manga/')]//*[contains(text(), 'hapter')]",
+                    'regex' => '/(?:(?:[kc]omi[kc]s?|man(?:ga|hwa|hua)|series|title)\s)?(.*)/i',
+                    'regex2' => '/(\s-)?\s(?:c(?:[ha](?:ap|ao|hp|pa|a|p))[tp]er|episode|vol(?:ume)?|view|shot|\b(?:ch(?:ap)?|ep)\b\.?).*/i',
                 ],
-                'json' => [ //no parent
-                    'xpath' => "//script[contains(text(), 'ts_reader.run')]",
+                'cover' => [
+                    'xpath' => ".//a[contains(@href, '/manga/')]//img",
+                    'attr' => 'src',
+                ],
+                'nav' => [
                     'regex' => '[\-\/](?:c(?:[ha](?:ap|ao|hp|pa|a|p))[tp]er|episode|vol(?:ume)?|view|shot|\b(?:ch(?:ap)?|ep)\b)',
                     'regex2' => '\-(?!\bep\b)[^\/\.]*(?:\d+|start|end|fix|e(?:x|ks)tra|spe[cs]ial|sea?s[io]n?|side(?:\-story)?|mentok|raw|tamat|epilog(?:ue)?|s\d|promo|novel)',
                     'next' => [
-                        'name' => 'nextUrl',
+                        'xpath' => ".//*[@data-lucide='chevron-right']//ancestor::a[contains(@href, '/manga/')]",
+                        'attr' => 'href',
                     ],
                     'prev' => [
-                        'name' => 'prevUrl',
+                        'xpath' => ".//*[@data-lucide='chevron-left']//ancestor::a[contains(@href, '/manga/')]",
+                        'attr' => 'href',
                     ],
                 ],
-                'images' => [], //images from <script>
+                'images' => [
+                    'xpath' => ".//section/img",
+                    'attr' => 'src',
+                ],
             ],
         ];
 
@@ -752,136 +743,13 @@ class xSelector
     public static function komikcast()
     {
         $data = [
-            'backend' => 'wordpress',
-            'theme' => 'enduser',
             'lang' => 'id',
+            'parser' => 'api',
             'url' => [
-                'host' => 'https://komikcast03.com',
-                'latest' => 'https://komikcast03.com/daftar-komik/page/{$page}/?sortby=update',
-                'search' => 'https://komikcast03.com/page/{$page}/?s={$value}',
-                'advanced' => 'https://komikcast03.com/daftar-komik/page/{$page}/?{$value}',
-                'series' => 'https://komikcast03.com/komik/{$slug}/',
-                'chapter' => 'https://komikcast03.com/chapter/{$slug}-chapter-{$chapter}-bahasa-indonesia/',
-            ],
-            'latest' => [ //parent is same as "LS" parent
-                'chapter' => [
-                    'xpath' => ".//*[contains(@class, 'list-update_item-info')]//*[contains(@class, 'chapter')]",
-                ],
-            ],
-            'LS' => [
-                'parent' => "//*[contains(@class, 'list-update_items-wrapper')]//*[contains(@class, 'list-update_item-image')]/../..", //same as parent::
-                'title' => [
-                    'xpath' => ".//*[@class='title']",
-                ],
-                'cover' => [
-                    'xpath' => ".//img",
-                    'attr' => 'src',
-                ],
-                'type' => [
-                    'xpath' => ".//*[contains(@class, 'type')]",
-                    'attr' => 'class',
-                    'regex' => '/[\s\/](man(?:h[wu]|g)a)/i',
-                ],
-                'completed' => [
-                    'xpath' => ".//*[contains(@class, 'status')]",
-                    'attr' => 'class',
-                    'regex' => '/\s?(end|completed?|finish(ed)?|tamat)/i',
-                ],
-                'link' => [
-                    'xpath' => ".//a[contains(@href, '/komik/')]",
-                    'attr' => 'href',
-                ],
-                'slug' => [
-                    'regex' => '/.*(?:[kc]omi[kc]s?|man(?:ga|hwa|hua)|series|title)?\/([^\/]+)/i',
-                    'regex2' => '/\/([\?#].*)?$/',
-                    'attr' => 'href',
-                ],
-                'nav' => [ //no parent
-                    'regex' => '/.*page[\/=](\d+)[\/&]?/i',
-                    'next' => [
-                        'xpath' => "//*[contains(@class, 'pagination')]//a[contains(@class, 'next page-numbers')]",
-                        'attr' => 'href',
-                    ],
-                    'prev' => [
-                        'xpath' => "//*[contains(@class, 'pagination')]//a[contains(@class, 'prev page-numbers')]",
-                        'attr' => 'href',
-                    ],
-                ],
-            ],
-            'series' => [
-                'parent' => "//*[contains(@class, 'komik_info')]",
-                'shortlink' => [ //no parent
-                    'xpath' => "//link[@rel='shortlink']",
-                    'attr' => 'href',
-                    'regex' => '/(?:\?p=|wp\.me\/)(.*)/i',
-                ],
-                'title' => [
-                    'xpath' => ".//h1",
-                    'regex' => '/([kc]omi[kc]s?|man(ga|hwa|hua)|series|title)\s/i',
-                    'regex2' => '/(\sbahasa?)?\s(\bindo\b|indos?nesiaa?)/i',
-                ],
-                'alternative' => [
-                    'xpath' => ".//*[contains(@class, 'komik_info-content-native')]",
-                ],
-                'cover' => [
-                    'xpath' => ".//*[contains(@class, 'komik_info-content-thumbnail')]//meta[@itemprop='url']",
-                    'attr' => 'content',
-                ],
-                'detail' => [
-                    'type' => [
-                        'xpath' => ".//*[contains(@class, 'komik_info-content-info-type')]//a",
-                    ],
-                    'status' => [
-                        'xpath' => ".//*[contains(@class, 'komik_info-content-meta')]//*[contains(text(), 'Status')]/parent::*",
-                        'regex' => '/(\s+)?status\:?(\s+)?/i',
-                    ],
-                    'released' => [
-                        'xpath' => ".//*[contains(@class, 'komik_info-content-meta')]//*[contains(text(), 'Released')]/parent::*",
-                        'regex' => '/(\s+)?(released?|terbitan)\:?(\s+)?/i',
-                    ],
-                    'author' => [
-                        'xpath' => ".//*[contains(@class, 'komik_info-content-meta')]//*[contains(text(), 'Author')]/parent::*[contains(@class, 'komik_info-content-info')]",
-                        'regex' => '/(\s+)?author\:?\s+/i',
-                    ],
-                    'genre' => [
-                        'xpath' => ".//*[contains(@class, 'komik_info-content-genre')]//a",
-                    ],
-                ],
-                'desc' => [
-                    'xpath' => ".//*[contains(@class, 'komik_info-description-sinopsis')]",
-                    'regex' => '/\s+|&(#160|nbsp);/',
-                    'remove' => [
-                        ".//*[contains(@class, 'post-views')]",
-                    ],
-                ],
-                'chapter' => [
-                    'xpath' => ".//*[@id='chapter-wrapper']//*[contains(@class, 'komik_info-chapters-item')]//a",
-                    'regex' => '/(?:-(?:c(?:[ha](?:ap|ao|hp|pa|a|p))[tp]er|episode|vol(?:ume)?|view|shot|\b(?:ch(?:ap)?|ep)\b))?-(\d(?:[\w\-]+)?)$/i',
-                    'regex2' => '/(-(bahasa?-)?(\bindo\b|indos?nesiaa?)\/?|\/([\?#].*)?$)/i',
-                    'attr' => 'href',
-                ],
-            ],
-            'chapter' => [
-                'parent' => "//*[contains(@class, 'chapter_')]",
-                'title' => [
-                    'xpath' => ".//*[contains(@class, 'allc')]//a",
-                ],
-                'nav' => [
-                    'regex' => '[\-\/](?:c(?:[ha](?:ap|ao|hp|pa|a|p))[tp]er|episode|vol(?:ume)?|view|shot|\b(?:ch(?:ap)?|ep)\b)',
-                    'regex2' => '\-(?!\bep\b)[^\/\.]*(?:\d+|start|end|fix|e(?:x|ks)tra|spe[cs]ial|sea?s[io]n?|side(?:\-story)?|mentok|raw|tamat|epilog(?:ue)?|s\d|promo|novel)',
-                    'next' => [
-                        'xpath' => ".//*[contains(@class, 'nextprev')]//a[@rel='next']",
-                        'attr' => 'href',
-                    ],
-                    'prev' => [
-                        'xpath' => ".//*[contains(@class, 'nextprev')]//a[@rel='prev']",
-                        'attr' => 'href',
-                    ],
-                ],
-                'images' => [
-                    'xpath' => ".//*[contains(@class, 'main-reading-area')]//img[@src]",
-                    'attr' => 'src',
-                ],
+                'host' => 'https://v2.komikcast.fit',
+                'latest' => 'https://v2.komikcast.fit/comics?take=24&sort=latest',
+                'search' => 'https://v2.komikcast.fit/comics?take=24&search={$value}',
+                'advanced' => 'https://v2.komikcast.fit/comics?take=24&{$value}',
             ],
         ];
 
@@ -1023,12 +891,12 @@ class xSelector
             'theme' => 'madara',
             'lang' => 'id',
             'url' => [
-                'host' => 'https://01.lumosgg.com',
-                'latest' => 'https://01.lumosgg.com/page/{$page}/?s&post_type=wp-manga&m_orderby=latest',
-                'search' => 'https://01.lumosgg.com/page/{$page}/?post_type=wp-manga&s={$value}',
-                'advanced' => 'https://01.lumosgg.com/page/{$page}/?post_type=wp-manga&{$value}',
-                'series' => 'https://01.lumosgg.com/komik/{$slug}/',
-                'chapter' => 'https://01.lumosgg.com/komik/{$slug}/chapter-{$chapter}/?style=list',
+                'host' => 'https://02.lumosgg.com',
+                'latest' => 'https://02.lumosgg.com/page/{$page}/?s&post_type=wp-manga&m_orderby=latest',
+                'search' => 'https://02.lumosgg.com/page/{$page}/?post_type=wp-manga&s={$value}',
+                'advanced' => 'https://02.lumosgg.com/page/{$page}/?post_type=wp-manga&{$value}',
+                'series' => 'https://02.lumosgg.com/komik/{$slug}/',
+                'chapter' => 'https://02.lumosgg.com/komik/{$slug}/chapter-{$chapter}/?style=list',
             ],
             'latest' => [ //parent is same as "LS" parent
                 'chapter' => [
@@ -1772,11 +1640,11 @@ class xSelector
             'parser' => 'api',
             'per_page' => 40,
             'url' => [
-                'host' => 'https://westmanga.me',
-                'latest' => 'https://westmanga.me/contents?type=Comic&page={$page}&orderBy=Update',
-                'default' => 'https://westmanga.me/contents?type=Comic&page={$page}&orderBy=Added',
-                'search' => 'https://westmanga.me/contents?type=Comic&page={$page}&q={$value}',
-                'advanced' => 'https://westmanga.me/contents?type=Comic&page={$page}&{$value}',
+                'host' => 'https://westmanga.tv',
+                'latest' => 'https://westmanga.tv/contents?type=Comic&page={$page}&orderBy=Update',
+                'default' => 'https://westmanga.tv/contents?type=Comic&page={$page}&orderBy=Added',
+                'search' => 'https://westmanga.tv/contents?type=Comic&page={$page}&q={$value}',
+                'advanced' => 'https://westmanga.tv/contents?type=Comic&page={$page}&{$value}',
             ],
         ];
 
@@ -1824,8 +1692,9 @@ class xSelector
                     'xpath' => ".//*[@class='tt']",
                 ],
                 'cover' => [
-                    'xpath' => ".//img",
+                    'xpath' => ".//img[contains(@class, 'ts-post-image')]",
                     'attr' => 'src',
+                    'attr_alt' => 'data-src',
                 ],
                 'type' => [
                     'xpath' => ".//*[contains(@class, 'type')]",
@@ -1872,6 +1741,7 @@ class xSelector
                 'cover' => [
                     'xpath' => ".//*[contains(@class, 'thumb')]//img",
                     'attr' => 'src',
+                    'attr_alt' => 'data-src',
                 ],
                 'detail' => [
                     'type' => [
@@ -1938,12 +1808,12 @@ class xSelector
             'theme' => 'themesia',
             'lang' => 'id',
             'url' => [
-                'host' => 'https://mangakita.id',
-                'latest' => 'https://mangakita.id/manga/?page={$page}&order=update',
-                'search' => 'https://mangakita.id/page/{$page}/?s={$value}',
-                'advanced' => 'https://mangakita.id/manga/?page={$page}&{$value}',
-                'series' => 'https://mangakita.id/manga/{$slug}/',
-                'chapter' => 'https://mangakita.id/{$slug}-chapter-{$chapter}/',
+                'host' => 'https://mangakita.me',
+                'latest' => 'https://mangakita.me/manga/?page={$page}&order=update',
+                'search' => 'https://mangakita.me/page/{$page}/?s={$value}',
+                'advanced' => 'https://mangakita.me/manga/?page={$page}&{$value}',
+                'series' => 'https://mangakita.me/manga/{$slug}/',
+                'chapter' => 'https://mangakita.me/{$slug}-chapter-{$chapter}/',
             ],
             'latest' => [ //parent is same as "LS" parent
                 'chapter' => [
@@ -2091,11 +1961,11 @@ class xSelector
             'lang' => 'id',
             'parser' => 'api',
             'url' => [
-                'host' => 'https://softkomik.com',
-                'latest' => 'https://softkomik.com/komik/library?page={$page}&sortBy=new',
-                'default' => 'https://softkomik.com/komik/library?page={$page}&sortBy=newKomik',
-                'search' => 'https://softkomik.com/komik/list?page={$page}&name={$value}',
-                'advanced' => 'https://softkomik.com/komik/library?page={$page}&{$value}',
+                'host' => 'https://softkomik.co',
+                'latest' => 'https://softkomik.co/komik/library?page={$page}&sortBy=new',
+                'default' => 'https://softkomik.co/komik/library?page={$page}&sortBy=newKomik',
+                'search' => 'https://softkomik.co/komik/list?page={$page}&name={$value}',
+                'advanced' => 'https://softkomik.co/komik/library?page={$page}&{$value}',
             ],
         ];
 
@@ -2200,11 +2070,11 @@ class xSelector
                     'regex' => '[\-\/](?:c(?:[ha](?:ap|ao|hp|pa|a|p))[tp]er|episode|vol(?:ume)?|view|shot|\b(?:ch(?:ap)?|ep)\b)',
                     'regex2' => '\-(?!\bep\b)[^\/\.]*(?:\d+|start|end|fix|e(?:x|ks)tra|spe[cs]ial|sea?s[io]n?|side(?:\-story)?|mentok|raw|tamat|epilog(?:ue)?|s\d|promo|novel)',
                     'next' => [
-                        'xpath' => "//*[contains(@class, 'nxpr')]//*[name()='svg' and @data-icon='caret-right']/parent::*",
+                        'xpath' => "//*[contains(@class, 'toolbar')]//*[@aria-label='Next']",
                         'attr' => 'href',
                     ],
                     'prev' => [
-                        'xpath' => "//*[contains(@class, 'nxpr')]//*[name()='svg' and @data-icon='caret-left']/parent::*",
+                        'xpath' => "//*[contains(@class, 'toolbar')]//*[@aria-label='Prev']",
                         'attr' => 'href',
                     ],
                 ],
@@ -3048,6 +2918,7 @@ class xSelector
             'url' => [
                 'host' => 'https://comick.dev',
                 'latest' => 'https://comick.dev/search?excludes=gender-bender&excludes=shoujo-ai&excludes=shounen-ai&excludes=crossdressing&excludes=genderswap&excludes=incest&excludes=yaoi&excludes=yuri&type=comic&showall=true&page={$page}&limit=49&sort=uploaded',
+                'default' => 'https://comick.dev/search?excludes=gender-bender&excludes=shoujo-ai&excludes=shounen-ai&excludes=crossdressing&excludes=genderswap&excludes=incest&excludes=yaoi&excludes=yuri&type=comic&showall=true&page={$page}&limit=49&sort=created_at',
                 'search' => 'https://comick.dev/search?excludes=gender-bender&excludes=shoujo-ai&excludes=shounen-ai&excludes=crossdressing&excludes=genderswap&excludes=incest&excludes=yaoi&excludes=yuri&type=comic&showall=true&page={$page}&limit=49&q={$value}',
                 'advanced' => 'https://comick.dev/search?excludes=gender-bender&excludes=shoujo-ai&excludes=shounen-ai&excludes=crossdressing&excludes=genderswap&excludes=incest&excludes=yaoi&excludes=yuri&type=comic&showall=true&page={$page}&limit=49&{$value}',
             ],

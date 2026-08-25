@@ -1,7 +1,5 @@
 <?php
 
-// Source: https://github.com/KotatsuApp/kotatsu-parsers/blob/02ac1cb896a5029a71873606a0e7fd59c0163cc4/src/main/kotlin/org/koitharu/kotatsu/parsers/site/id/Ikiru.kt
-
 namespace Api\Parsers;
 
 require_once dirname(__DIR__, 2) . '/tools/faker/user-agent.php';
@@ -10,11 +8,11 @@ use \DOMXpath;
 use Api\Services\Http;
 use Faker\UserAgentGenerator;
 
-class IkiruParser
+class KiryuuParser
 {
     public $response;
     private $headers;
-    private $domain = '04.ikiru.wtf';
+    private $domain = 'v5.kiryuu.to';
     private $nonce = null;
 
     public function __construct()
@@ -33,8 +31,7 @@ class IkiruParser
             'action' => 'advanced_search',
             'nonce' => $this->getNonce(),
             'genre_exclude' => [ //exclude_nsfw
-                'crossdressing', 'gender-bender', 'genderswap',
-                'incest', 'nsfw', 'shoujo-ai', 'shounen-ai', 'bodyswap'
+                'boys-love', 'crossdressing', 'gender-bender', 'genderswap', 'girls-love', 'incest', 'shoujo-ai', 'shounen-ai', 'smut', 'yaoi', 'yuri'
             ],
             'page' => $page,
             'order' => 'desc',
@@ -96,8 +93,7 @@ class IkiruParser
             'action' => 'advanced_search',
             'nonce' => $this->getNonce(),
             'genre_exclude' => [ //exclude_nsfw
-                'crossdressing', 'gender-bender', 'genderswap',
-                'incest', 'nsfw', 'shoujo-ai', 'shounen-ai'
+                'boys-love', 'crossdressing', 'gender-bender', 'genderswap', 'girls-love', 'incest', 'shoujo-ai', 'shounen-ai', 'smut', 'yaoi', 'yuri'
             ],
             'page' => $page,
             'order' => 'desc',

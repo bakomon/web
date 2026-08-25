@@ -18,18 +18,20 @@ if (!(new Allowed)->check()) {
   exit;
 }
 
-$source_link = $_GET['url'];
-$method = $_GET['post'] == 'true' ? 'POST' : 'GET';
-
-$user_agent = [ //chrome
-  'desktop' => (new UserAgentGenerator)->userAgent(),
+$user_agent = [
+  'desktop' => (new UserAgentGenerator)->userAgent(), //chrome
   'mobile' => (new UserAgentGenerator)->safariMobile(),
 ];
 
-$headers = [
+$source_link = $_GET['url'];
+$method = $_GET['post'] == 'true' ? 'POST' : 'GET';
+$headers = isset($_GET['headers']) ? json_decode(urldecode($_GET['headers']), true) : [];
+
+$default_headers = [
   'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
   'User-Agent' => $user_agent[$_GET['mobile'] == 'true' ? 'mobile' : 'desktop'],
 ];
+$headers = array_merge($default_headers, $headers); //override default headers
 
 if ($_GET['curl'] == 'true') {
   if (strtoupper($method) === 'POST') {
@@ -47,8 +49,8 @@ if ($_GET['curl'] == 'true') {
 } else {
   $source_xml = Http::load($source_link, ['method' => $method, 'headers' => $headers]);
   if (!$source_xml->isSuccess() && $_GET['bypass'] == 'true') {
-    // if ($source_xml->isBlocked()) $source_xml = Http::bypass($source_link, ['headers' => $headers]);
-    if ($source_xml->isBlocked()) $source_xml = Http::proxy($source_link, ['headers' => $headers]);
+    if ($source_xml->isBlocked()) $source_xml = Http::bypass($source_link, ['headers' => $headers]);
+    // if ($source_xml->isBlocked()) $source_xml = Http::proxy($source_link, ['headers' => $headers]);
   }
 
   $status_code = $source_xml->status;

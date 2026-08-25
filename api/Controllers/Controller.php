@@ -123,8 +123,19 @@ class Controller
     }
 
     // remove the old contents https://stackoverflow.com/a/38815450
-    function set_inner_html($parent, $html)
+    function set_inner_html($parent, $html, $preserve_ids = [])
     {
+        if ($html === null) return;
+
+        // Remove all id attributes except those in $preserve_ids
+        $html = preg_replace_callback(
+            '/\s+id="([^"]*)"/i',
+            function ($matches) use ($preserve_ids) {
+                return in_array($matches[1], $preserve_ids) ? $matches[0] : '';
+            },
+            $html
+        );
+
         $html = str_replace('&', '&amp;', $html);
         $fragment = $parent->ownerDocument->createDocumentFragment();
         $fragment->appendXML($html);
@@ -170,15 +181,20 @@ class Controller
                     $source_parser = new $parser();
                     $source_link = str_replace('{$page}', $page, $source['url']['latest']);
                 }
-                // $source_link = $source_parser->response->link;
 
                 $ls_data = $source_parser->getLatest('update', $page, $per_page);
+                $source_xml = $source_parser->response;
+                // $source_link = $source_xml->link;
+
+                if (isset($ls_data['error'])) {
+                    return (object) $source_xml->showError();
+                }
+
                 $ls_lists = $ls_data['lists'];
                 $ls_exists = count($ls_lists) > 0;
 
                 $next = $ls_data['next'];
 
-                $source_xml = $source_parser->response;
                 $prev = $page == '1' ? '' : (int)$page - 1;
                 $prev = (string)$prev;
             } else {
@@ -333,6 +349,7 @@ class Controller
 
                     if (array_key_exists('manual', $source['LS']['nav'])) {
                         $next_page = (int)$page + 1;
+                        $next = '';
 
                         if ($source['theme'] == 'madara' || $source_site == 'komiku') {
                             $next_link = preg_replace('/([\?&\/]page[=\/])\d+/', '${1}' . $next_page, $source_link);
@@ -341,7 +358,7 @@ class Controller
                         }
 
                         if ($source['theme'] == 'tukutema') {
-                            $next_btn = $this->queryX($xpath, $source['LS']['nav']['next']['xpath'], $lists);
+                            $next_btn = $xpath->query($source['LS']['nav']['next']['xpath']);
                             if ($next_btn->length > 0) $next = (string)$next_page;
                         }
 
@@ -356,8 +373,8 @@ class Controller
                             $next = $next_el->length > 0 ? (string)$next_page : '';
                         }
 
-                        $prev = $page == '1' ? '' : (int)$page - 1;
-                        $prev = (string)$prev;
+                        $prev_page = $page == '1' ? '' : (int)$page - 1;
+                        $prev = (string)$prev_page;
                     } else {
                         $next = '';
                         $prev = '';
@@ -444,14 +461,12 @@ class Controller
                         $search = ['{$locale}', '{$page}', '{$value}'];
                         $repl = [$locale, $page, $val];
                         $source_link = str_replace($search, $repl, $source['url']['search']);
-                        // $source_link = $source_parser->response->link;
                     } else {
                         $source_parser = new $parser();
 
                         $search = ['{$page}', '{$value}'];
                         $full_url = $is_advanced ? ($value == 'default' && array_key_exists('default', $source['url']) ? 'default' : 'advanced') : 'search';
                         $source_link = str_replace($search, [$page, $val], $source['url'][$full_url]);
-                        // $source_link = $source_parser->response->link;
                         if ($is_advanced && $value == 'default') $source_link = preg_replace('/[\?&]=?$/', '', $source_link); //removes last "?" or "&" character
                     }
 
@@ -461,6 +476,13 @@ class Controller
                         $sc_data = $source_parser->getSearch($is_advanced, $val, $page, $per_page);
                     }
 
+                    $source_xml = $source_parser->response;
+                    // $source_link = $source_xml->link;
+
+                    if (isset($sc_data['error'])) {
+                        return (object) $source_xml->showError();
+                    }
+
                     $sc_lists = $sc_data['lists'];
                     $sc_exists = count($sc_lists) > 0;
 
@@ -468,7 +490,6 @@ class Controller
                         if ($is_advanced && strpos($val, 'sortBy=') === FALSE) $val = "sortBy=newKomik&$val";
                     }
 
-                    $source_xml = $source_parser->response;
                     $next = $sc_data['next'];
                     $prev = $page == '1' ? '' : (int)$page - 1;
                     $prev = (string)$prev;
@@ -825,7 +846,7 @@ class Controller
 
                         if ($genres->length > 0) {
                             foreach ($genres as $index) {
-                                array_push($gr_lists, $index->textContent);
+                                array_push($gr_lists, trim($index->textContent));
                             }
                         }
 

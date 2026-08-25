@@ -57,18 +57,35 @@ function convertQuality($quality) {
  * @param array $headers The php headers to be parsed
  * @link https://www.php.net/manual/en/reserved.variables.httpresponseheader.php#117203
  */
-function parse_header($headers) {
-  $head = array();
+function parse_headers($headers) {
+  $header = [];
   foreach( $headers as $k=>$v ) {
     $t = explode( ':', $v, 2 );
     if ( isset($t[1]) ) {
-      $head[ strtolower(trim($t[0])) ] = trim( $t[1] );
+      $header[ strtolower(trim($t[0])) ] = trim( $t[1] );
     } else {
-      $head[] = $v;
-      if ( preg_match("#HTTP/[0-9\.]+\s+([0-9]+)#",$v, $out) ) $head['reponse_code'] = intval( $out[1] );
+      $header[] = $v;
+      if ( preg_match("#HTTP/[0-9\.]+\s+([0-9]+)#",$v, $out) ) $header['reponse_code'] = intval( $out[1] );
     }
   }
-  return $head;
+  return $header;
+}
+
+/**
+ * Extract the final response headers from $http_response_header
+ *
+ * @param array $http_response_header The raw PHP response headers
+ * @return array Final response headers only
+ */
+function final_headers($headers) {
+  $finalHeaders = [];
+  for ($i = count($headers) - 1; $i >= 0; $i--) {
+    if (stripos($headers[$i], 'HTTP/') === 0) {
+      $finalHeaders = array_slice($headers, $i);
+      break;
+    }
+  }
+  return $finalHeaders;
 }
 
 /**
@@ -93,12 +110,14 @@ function image_get($url, $ref = null) {
 
   $context = stream_context_create($options);
   $response = @file_get_contents($url, false, $context);
-  $headers = $http_response_header;
+  $headers = final_headers($http_response_header);
+
   $data = [
-    "headers" => parse_header($headers),
+    "headers" => parse_headers($headers),
     "response" => $response,
   ];
   if ($response !== false) $data['size'] = getimagesizefromstring($response);
+
   return (object) $data;
 }
 
@@ -111,7 +130,7 @@ function image_get($url, $ref = null) {
  * @link https://gist.github.com/tdebatty/9412259
  */
 function delete_older_than($dir, $max_age) {
-  $list = array();
+  $list = [];
   $limit = time() - $max_age;
   $dir = realpath($dir);
 
@@ -204,7 +223,7 @@ function check_file_ok($data, $url) {
     return FALSE;
   }
   // If not image, return FALSE
-  if (!preg_match('/image\/(png|jpe?g|gif|webp)/', $file_type)) {
+  if (!preg_match('/image\/(png|jpe?g|gif|webp|avif)/', $file_type)) {
     return FALSE;
   }
   return TRUE;
@@ -466,6 +485,7 @@ if (!param_check('IMGPA_URL', $_ENV)) {
   exit;
 }
 
+// $folder_path = './.temp-files/'; //debug
 $folder_path = sys_get_temp_dir() . '/.temp-files/';
 if (!is_dir($folder_path)) mkdir($folder_path, 0777, true);
 
@@ -495,7 +515,7 @@ try {
       $cache_name = param_check('name', $_GET) ? $_GET['name'] : $img_info['basename'];
       $cache_path = $folder_path . $img_info['extension'] . '-' . $cache_name. '.json';
 
-      if ($img_info['extension'] != 'webp') {
+      if (!in_array(strtolower($img_info['extension']), ['webp', 'avif'])) {
         $expiration = 300; //5 minutes
         $cache = cache_file($cache_path, $expiration);
 
@@ -508,7 +528,7 @@ try {
           file_put_contents($cache_path, json_encode($resmush));
           $res_url = "$IMGPA_URL?$wsrv_size&url=" . rawurlencode($resmush['dest']) . "&q=$quality&hide_error";
           if (isset($img_parse['fragment'])) $res_url .= '#' . $img_parse['fragment'];
-          show_success($img_res, $res_url, $img_info['basename']);
+          show_success($img_res, $res_url, $img_info['basename'], $img_blocked);
         }
       } else {
         $expiration = 1800; //30 minutes
@@ -521,7 +541,7 @@ try {
           file_put_contents($cache_path, json_encode($img_temp));
           $res_url = "$IMGPA_URL?$wsrv_size&url=" . rawurlencode($img_temp['image']['url']) . "&q=$quality&hide_error";
           if (isset($img_parse['fragment'])) $res_url .= '#' . $img_parse['fragment'];
-          show_success($img_res, $res_url, $img_info['basename']);
+          show_success($img_res, $res_url, $img_info['basename'], $img_blocked);
         } else {
           show_error('image_temp: ' . $img_temp['message'], $img_url);
         }
@@ -534,7 +554,7 @@ try {
         //   $postimages_url = $postimages['links']['hotlink'] . '#' . parse_url($postimages['links']['delete'], PHP_URL_PATH);
         //   $res_url = "$IMGPA_URL?$wsrv_size&url=" . rawurlencode($postimages_url) . "&q=$quality&hide_error";
         //   if (isset($img_parse['fragment'])) $res_url .= '#' . $img_parse['fragment'];
-        //   show_success($img_res, $res_url, $img_info['basename']);
+        //   show_success($img_res, $res_url, $img_info['basename'], $img_blocked);
         // }
 
       }

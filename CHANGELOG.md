@@ -345,3 +345,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `tukangkomik.co` (themesia)
 - `pojokmanga.com` (madara)
 - `komiklovers.com` (themesia)
+
+
+## [1.9] - 2026-08-25
+
+### Fixed
+
+- duplicate IDs when using `DOMDocumentFragment::appendXML`
+- series: visited chapter links normalized (e.g., `014` as `14`)
+- numerous bug fixes and improvements.
+
+### Added
+
+- image-resize: support `.avif` file
+- chapter: save last viewed image in localStorage
+
+### Changed
+
+- api: `kiryuu.io` themesia to tukutema
+- api: `komikcast.to` wordpress to custom

@@ -99,18 +99,25 @@ class Http
     {
         $dom = new DOMDocument();
         $response = $this->escape();
+        if (trim($response) === '') {
+            return $dom;
+        }
         @$dom->loadHTML(mb_encode_numericentity($response, [0x80, 0x10FFFF, 0, ~0], 'UTF-8'), $options); //https://stackoverflow.com/a/8218649
         return $dom;
     }
 
     public function escape($response = null)
     {
-        $escape = new Escape();
         $invalid = [
             '/\n?\s+[:@][\w\-\.]+="[^"]+"/', //remove invalid attributes. e.g. ":class" or "@click"
             '/\s(?!([\w:-]+)?(href|src|get|post|patch|put|url))[\w:-]+=([\'"])(?:(?!\3)[\s\S])*?[<>&](?:(?!\3)[\s\S])*?\3/', //remove attributes whose values contain "<, >, or &". skip attributes containing "href" or "src"
         ];
-        $res = preg_replace($invalid, '', ($response ?? $this->source));
+
+        $escape = new Escape();
+        $res = $response ?? $this->source;
+        if ($res === null) return $res;
+
+        $res = preg_replace($invalid, '', $res);
         $res = $escape->fix_html_comments($res);
         $res = $escape->fix_void_elements($res);
         $res = $escape->fix_boolean_attributes($res);
@@ -191,14 +198,17 @@ class Http
 
     public static function proxy(String $url, $options = [])
     {
-        $source = 'HuaBofeng';
         $lists = [
             '1234567Yang' => 'https://y.demo.lhyang.org/',
             '1234567Yang_2' => '__PROXY_PWD__=maga2028|https://shengtai.edu.pastapexamsdownload.space/',
-            'HuaBofeng' => 'https://p.lanni.site/',
+            'HuaBofeng' => '__PROXY_PWD__=lanni|https://p.lanni.site/',
             // 'wangwenzhiwwz' => 'https://p.wwz.im/',
             // 'SokWithMe' => 'https://xyp.pages.dev/',
         ];
+
+        // pick a random source from the list
+        $keys = array_keys($lists);
+        $source = $keys[array_rand($keys)];
 
         self::$proxy = true;
         self::$proxy_host = $lists[$source];
@@ -224,7 +234,7 @@ class Http
 
     public function showError($message = null)
     {
-        $error_message = 'Terjadi kesalahan';
+        $error_message = 'Oops! Something went wrong';
 
         if ($this->status == 522) {
             $error_message = 'Connection timed out';
@@ -232,6 +242,8 @@ class Http
             $error_message = 'Server Error';
         } else if ($this->status == 404) {
             $error_message = 'Page Not Found';
+        } else if ($this->status == 401) {
+            $error_message = 'Unauthorized';
         } else if ($this->status >= 400) {
             $error_message = 'Client Error';
         } else if ($message) {
